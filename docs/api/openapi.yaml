@@ -1,0 +1,507 @@
+openapi: 3.0.3
+info:
+  title: Secure Payment Gateway API
+  version: 1.0.0
+  description: API for Merchants to process payments securely.
+servers:
+  - url: https://api.gateway.com/v1
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Merchant-Access-Key
+    SignatureAuth:
+      type: apiKey
+      in: header
+      name: X-Signature # HMAC-SHA256 signature
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Common ---
+    ErrorResponse:
+      type: object
+      required: [error_code, message, request_id, timestamp]
+      properties:
+        error_code:
+          type: string
+          example: PAY_001
+        message:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+
+    TransactionResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        reference_id:
+          type: string
+        status:
+          type: string
+          enum: [SUCCESS, FAILED, PENDING]
+        amount:
+          type: integer
+        currency:
+          type: string
+        transaction_type:
+          type: string
+          enum: [PAYMENT, REFUND, TOPUP]
+        processed_at:
+          type: string
+          format: date-time
+
+    # --- Auth ---
+    RegisterRequest:
+      type: object
+      required: [username, password, merchant_name]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        password:
+          type: string
+          minLength: 8
+        merchant_name:
+          type: string
+          maxLength: 100
+        webhook_url:
+          type: string
+          format: uri
+          description: URL for receiving transaction status webhooks
+
+    RegisterResponse:
+      type: object
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        access_key:
+          type: string
+          description: Public key for API identification
+        secret_key:
+          type: string
+          description: Private key for signing requests (shown ONCE)
+        message:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT token for dashboard/management APIs
+        expires_at:
+          type: string
+          format: date-time
+
+    # --- Wallet ---
+    WalletResponse:
+      type: object
+      properties:
+        wallet_id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+        balance:
+          type: number
+          description: Decrypted balance (only visible to authenticated merchant)
+        updated_at:
+          type: string
+          format: date-time
+
+    # --- Dashboard ---
+    DashboardStats:
+      type: object
+      properties:
+        total_transactions:
+          type: integer
+        successful_transactions:
+          type: integer
+        failed_transactions:
+          type: integer
+        total_revenue:
+          type: number
+          description: Sum of successful payment amounts
+        total_refunded:
+          type: number
+        net_balance:
+          type: number
+        period:
+          type: string
+          enum: [today, week, month, all]
+
+    TransactionListResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+  # Reusable parameters for payment endpoints
+  parameters:
+    SignatureHeaders:
+      - in: header
+        name: X-Timestamp
+        schema:
+          type: integer
+        required: true
+        description: Unix timestamp (max age 60s for replay attack prevention)
+      - in: header
+        name: X-Nonce
+        schema:
+          type: string
+        required: true
+        description: Unique string per request (checked via Redis)
+
+# ============================================================
+# API PATHS
+# ============================================================
+
+paths:
+  # ----------------------------------------------------------
+  # AUTHENTICATION (No signature required, public endpoints)
+  # ----------------------------------------------------------
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new Merchant
+      description: |
+        Creates merchant account, generates Access Key and Secret Key pair.
+        Secret Key is returned ONCE and stored encrypted (AES-256) in DB.
+        A default wallet (VND, balance=0) is created automatically.
+      operationId: registerMerchant
+      security: [] # Public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Merchant registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Username already exists
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Merchant login (for Dashboard access)
+      description: Returns JWT token for accessing management/dashboard endpoints.
+      operationId: loginMerchant
+      security: [] # Public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+
+  # ----------------------------------------------------------
+  # PAYMENT OPERATIONS (Signature-based auth required)
+  # ----------------------------------------------------------
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Create a payment transaction
+      description: |
+        Deduct funds from merchant wallet using Pessimistic Locking.
+        Flow: Idempotency check → Lock wallet → Decrypt balance → Validate → 
+        Calculate → Encrypt → Update → Commit → Webhook.
+      operationId: createPayment
+      security:
+        - ApiKeyAuth: []
+          SignatureAuth: []
+      parameters:
+        - in: header
+          name: X-Timestamp
+          schema:
+            type: integer
+          required: true
+          description: Unix timestamp to prevent Replay Attacks
+        - in: header
+          name: X-Nonce
+          schema:
+            type: string
+          required: true
+          description: Unique string for this request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference_id, amount, currency]
+              properties:
+                reference_id:
+                  type: string
+                  description: Merchant's unique Order ID (serves as Idempotency Key)
+                amount:
+                  type: integer
+                  minimum: 1000
+                  description: Amount in smallest unit (e.g., 100000 = 100,000 VND)
+                currency:
+                  type: string
+                  default: VND
+                extra_data:
+                  type: string
+                  description: Optional metadata for the order
+      responses:
+        "200":
+          description: Transaction processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          description: Bad Request / Validation Error (PAY_002)
+        "402":
+          description: Insufficient Funds (PAY_001)
+        "409":
+          description: Duplicate Transaction (PAY_003)
+        "401":
+          description: Authentication failure (SEC_001, SEC_002)
+        "403":
+          description: Replay attack detected (SEC_003, SEC_004)
+        "429":
+          description: Rate limit exceeded
+
+  /payments/refund:
+    post:
+      tags: [Payments]
+      summary: Refund a completed transaction
+      description: |
+        Reverse a previously successful transaction. Adds funds back to merchant wallet.
+        Requirements: 
+        - Original transaction must exist and have status SUCCESS
+        - Original transaction must not have been already refunded
+        - Uses same Pessimistic Locking flow for balance update
+      operationId: refundPayment
+      security:
+        - ApiKeyAuth: []
+          SignatureAuth: []
+      parameters:
+        - in: header
+          name: X-Timestamp
+          schema:
+            type: integer
+          required: true
+        - in: header
+          name: X-Nonce
+          schema:
+            type: string
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [original_reference_id, reason]
+              properties:
+                original_reference_id:
+                  type: string
+                  description: The reference_id of the original PAYMENT transaction to refund
+                amount:
+                  type: integer
+                  minimum: 1000
+                  description: Refund amount (if omitted, full refund of original amount)
+                reason:
+                  type: string
+                  description: Reason for refund
+      responses:
+        "200":
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          description: Invalid refund request
+        "404":
+          description: Original transaction not found (PAY_004)
+        "409":
+          description: Transaction already refunded (PAY_003)
+
+  # ----------------------------------------------------------
+  # WALLET OPERATIONS (JWT auth for merchant dashboard)
+  # ----------------------------------------------------------
+  /wallets/topup:
+    post:
+      tags: [Wallet]
+      summary: Top up merchant wallet (simulated)
+      description: |
+        Add funds to merchant wallet. In a real system, this would be triggered 
+        by bank transfer verification. Here it is simulated for testing.
+        Uses same Pessimistic Locking + Encryption flow as payments.
+      operationId: topupWallet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, currency]
+              properties:
+                amount:
+                  type: integer
+                  minimum: 1000
+                currency:
+                  type: string
+                  default: VND
+      responses:
+        "200":
+          description: Topup successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          description: Invalid amount
+
+  /wallets/balance:
+    get:
+      tags: [Wallet]
+      summary: Get current wallet balance
+      description: Decrypts and returns current balance for authenticated merchant.
+      operationId: getWalletBalance
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Wallet info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+        "404":
+          description: Wallet not found
+
+  # ----------------------------------------------------------
+  # DASHBOARD / REPORTING (JWT auth)
+  # ----------------------------------------------------------
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Get transaction statistics
+      description: |
+        Returns aggregated stats: total transactions, success/fail counts,
+        revenue, refunds, net balance. Filterable by time period.
+      operationId: getDashboardStats
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [today, week, month, all]
+            default: today
+          description: Time period for aggregation
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /transactions:
+    get:
+      tags: [Dashboard]
+      summary: List transaction history
+      description: Paginated list of all transactions for the authenticated merchant.
+      operationId: listTransactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, SUCCESS, FAILED, REVERSED]
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [PAYMENT, REFUND, TOPUP]
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+          description: Filter from date
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+          description: Filter to date
+      responses:
+        "200":
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListResponse"
