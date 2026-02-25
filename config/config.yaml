@@ -1,0 +1,33 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug" # debug | release | test
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "payment_gateway"
+  sslmode: "disable"
+  max_conns: 20
+  min_conns: 5
+  conn_max_lifetime: "30m"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "change-me-in-production-use-env-var"
+  expiry: "24h"
+  issuer: "secure-payment-gateway"
+
+aes:
+  key: "" # 64-char hex string (32 bytes). Set via SPG_AES_KEY env var.
+
+log:
+  level: "info" # debug | info | warn | error
+  pretty: false # true for dev console output
