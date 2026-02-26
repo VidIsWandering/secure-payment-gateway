@@ -171,7 +171,7 @@ ctrl := gomock.NewController(t)
 defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
-h := NewPaymentHandler(mockPayment)
+h := NewPaymentHandler(mockPayment, nil)
 
 merchantID := uuid.New()
 txID := uuid.New()
@@ -215,7 +215,7 @@ ctrl := gomock.NewController(t)
 defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
-h := NewPaymentHandler(mockPayment)
+h := NewPaymentHandler(mockPayment, nil)
 
 w := httptest.NewRecorder()
 c, _ := gin.CreateTestContext(w)
@@ -231,7 +231,7 @@ ctrl := gomock.NewController(t)
 defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
-h := NewPaymentHandler(mockPayment)
+h := NewPaymentHandler(mockPayment, nil)
 
 merchantID := uuid.New()
 mockPayment.EXPECT().ProcessPayment(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInsufficientFunds())
@@ -258,7 +258,7 @@ ctrl := gomock.NewController(t)
 defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
-h := NewPaymentHandler(mockPayment)
+h := NewPaymentHandler(mockPayment, nil)
 
 merchantID := uuid.New()
 txID := uuid.New()
@@ -298,7 +298,7 @@ defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
 mockReporting := mocks.NewMockReportingService(ctrl)
-h := NewWalletHandler(mockPayment, mockReporting)
+h := NewWalletHandler(mockPayment, mockReporting, nil)
 
 merchantID := uuid.New()
 mockReporting.EXPECT().GetWalletBalance(gomock.Any(), merchantID).Return(int64(100000), "VND", nil)
@@ -324,7 +324,7 @@ defer ctrl.Finish()
 
 mockPayment := mocks.NewMockPaymentService(ctrl)
 mockReporting := mocks.NewMockReportingService(ctrl)
-h := NewWalletHandler(mockPayment, mockReporting)
+h := NewWalletHandler(mockPayment, mockReporting, nil)
 
 merchantID := uuid.New()
 txID := uuid.New()
