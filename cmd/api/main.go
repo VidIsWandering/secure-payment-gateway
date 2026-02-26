@@ -84,19 +84,23 @@ func main() {
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
 	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log)
-	_ = webhookSvc // Available for future integration into payment flow
+
+	// Initialize rate limit store
+	rateLimitStore := redisStorage.NewRateLimitStore(rdb)
 
 	// Setup Gin router with all routes
 	router := httpHandler.SetupRouter(httpHandler.RouterDeps{
-		AuthSvc:      authSvc,
-		PaymentSvc:   paymentSvc,
-		ReportingSvc: reportingSvc,
-		MerchantRepo: merchantRepo,
-		EncSvc:       encSvc,
-		SigSvc:       sigSvc,
-		NonceStore:   nonceStore,
-		TokenSvc:     tokenSvc,
-		Logger:       log,
+		AuthSvc:        authSvc,
+		PaymentSvc:     paymentSvc,
+		ReportingSvc:   reportingSvc,
+		WebhookSvc:     webhookSvc,
+		MerchantRepo:   merchantRepo,
+		EncSvc:         encSvc,
+		SigSvc:         sigSvc,
+		NonceStore:     nonceStore,
+		TokenSvc:       tokenSvc,
+		RateLimitStore: rateLimitStore,
+		Logger:         log,
 	})
 
 	// HTTP Server with graceful shutdown
