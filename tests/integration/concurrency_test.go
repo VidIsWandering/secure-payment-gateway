@@ -113,7 +113,7 @@ func TestConcurrentPayments(t *testing.T) {
 				return
 			}
 			defer r.Body.Close()
-			io.ReadAll(r.Body)
+			_, _ = io.ReadAll(r.Body)
 
 			if r.StatusCode == 201 {
 				successCount.Add(1)
@@ -177,8 +177,9 @@ func TestConcurrentPayments_InsufficientFunds(t *testing.T) {
 			SecretKey  string `json:"secret_key"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&regResult)
+	err = json.NewDecoder(resp.Body).Decode(&regResult)
 	resp.Body.Close()
+	require.NoError(t, err)
 
 	accessKey := regResult.Data.AccessKey
 	secretKey := regResult.Data.SecretKey
@@ -193,8 +194,9 @@ func TestConcurrentPayments_InsufficientFunds(t *testing.T) {
 			Token string `json:"token"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&loginResult)
+	err = json.NewDecoder(resp.Body).Decode(&loginResult)
 	resp.Body.Close()
+	require.NoError(t, err)
 	token := loginResult.Data.Token
 
 	// Topup 500,000
@@ -245,7 +247,7 @@ func TestConcurrentPayments_InsufficientFunds(t *testing.T) {
 				return
 			}
 			defer r.Body.Close()
-			io.ReadAll(r.Body)
+			_, _ = io.ReadAll(r.Body)
 
 			if r.StatusCode == 201 {
 				successCount.Add(1)
@@ -278,8 +280,9 @@ func TestConcurrentPayments_InsufficientFunds(t *testing.T) {
 			Currency string `json:"currency"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&balanceResult)
+	err = json.NewDecoder(resp.Body).Decode(&balanceResult)
 	resp.Body.Close()
+	require.NoError(t, err)
 
 	t.Logf("Final balance: %d VND (should be >= 0)", balanceResult.Data.Balance)
 	assert.GreaterOrEqual(t, balanceResult.Data.Balance, int64(0), "balance must never go negative")
@@ -307,21 +310,24 @@ func TestConcurrentIdempotency(t *testing.T) {
 			SecretKey string `json:"secret_key"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&regResult)
+	err = json.NewDecoder(resp.Body).Decode(&regResult)
 	resp.Body.Close()
+	require.NoError(t, err)
 
 	accessKey := regResult.Data.AccessKey
 	secretKey := regResult.Data.SecretKey
 
 	loginBody := `{"username":"idemp_user","password":"StrongPass123!"}`
-	resp, _ = http.Post(app.server.URL+"/api/v1/auth/login", "application/json", bytes.NewBufferString(loginBody))
+	resp, err = http.Post(app.server.URL+"/api/v1/auth/login", "application/json", bytes.NewBufferString(loginBody))
+	require.NoError(t, err)
 	var loginResult struct {
 		Data struct {
 			Token string `json:"token"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&loginResult)
+	err = json.NewDecoder(resp.Body).Decode(&loginResult)
 	resp.Body.Close()
+	require.NoError(t, err)
 	token := loginResult.Data.Token
 
 	topupBody := `{"amount":1000000,"currency":"VND"}`
@@ -374,7 +380,7 @@ func TestConcurrentIdempotency(t *testing.T) {
 						ID string `json:"id"`
 					} `json:"data"`
 				}
-				json.NewDecoder(r.Body).Decode(&result)
+				_ = json.NewDecoder(r.Body).Decode(&result)
 				txIDs[idx] = result.Data.ID
 			}
 		}(i)
@@ -414,7 +420,7 @@ func TestConcurrentIdempotency(t *testing.T) {
 			Balance int64 `json:"balance"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&balanceResult)
+	_ = json.NewDecoder(resp.Body).Decode(&balanceResult)
 	resp.Body.Close()
 
 	expectedMinBalance := int64(1000000) - int64(len(uniqueIDs))*50000

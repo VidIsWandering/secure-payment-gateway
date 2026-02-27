@@ -97,7 +97,7 @@ func decodeArgon2Hash(encodedHash string) (salt, hash []byte, params argon2Param
 		return nil, nil, params, fmt.Errorf("decoding hash: %w", err)
 	}
 
-	params.keyLen = uint32(len(hash))
+	params.keyLen = uint32(len(hash)) //nolint:gosec // hash length is always small, no overflow risk
 
 	return salt, hash, params, nil
 }

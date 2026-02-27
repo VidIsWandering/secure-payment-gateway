@@ -173,7 +173,6 @@ func (r *TransactionRepo) GetStats(ctx context.Context, merchantID uuid.UUID, pe
 	if periodStart != nil {
 		condition += fmt.Sprintf(" AND created_at >= to_timestamp($%d)", argIdx)
 		args = append(args, *periodStart)
-		argIdx++
 	}
 
 	query := fmt.Sprintf(`SELECT

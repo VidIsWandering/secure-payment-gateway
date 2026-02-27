@@ -26,9 +26,16 @@ func NewNonceStore(client *goredis.Client) *NonceStore {
 // Returns true if the nonce is new (valid), false if already used.
 func (s *NonceStore) CheckAndSet(ctx context.Context, merchantID string, nonce string, ttl time.Duration) (bool, error) {
 	key := s.prefix + merchantID + ":" + nonce
-	ok, err := s.client.SetNX(ctx, key, 1, ttl).Result()
+	result, err := s.client.SetArgs(ctx, key, 1, goredis.SetArgs{
+		Mode: "NX",
+		TTL:  ttl,
+	}).Result()
 	if err != nil {
+		if err == goredis.Nil {
+			// Key already exists — nonce was already used
+			return false, nil
+		}
 		return false, fmt.Errorf("redis nonce check: %w", err)
 	}
-	return ok, nil
+	return result == "OK", nil
 }

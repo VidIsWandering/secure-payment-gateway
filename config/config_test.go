@@ -76,7 +76,7 @@ log:
 `)
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, content, 0644))
+	require.NoError(t, os.WriteFile(cfgPath, content, 0600))
 
 	cfg, err := Load(cfgPath)
 	require.NoError(t, err)
