@@ -43,7 +43,8 @@ func (r *inMemoryMerchantRepo) GetByID(ctx context.Context, id uuid.UUID) (*doma
 	if !ok {
 		return nil, nil
 	}
-	return m, nil
+	copy := *m
+	return &copy, nil
 }
 
 func (r *inMemoryMerchantRepo) GetByAccessKey(ctx context.Context, accessKey string) (*domain.Merchant, error) {
@@ -51,7 +52,8 @@ func (r *inMemoryMerchantRepo) GetByAccessKey(ctx context.Context, accessKey str
 	defer r.mu.RUnlock()
 	for _, m := range r.merchants {
 		if m.AccessKey == accessKey {
-			return m, nil
+			copy := *m
+			return &copy, nil
 		}
 	}
 	return nil, nil
@@ -62,7 +64,8 @@ func (r *inMemoryMerchantRepo) GetByUsername(ctx context.Context, username strin
 	defer r.mu.RUnlock()
 	for _, m := range r.merchants {
 		if m.Username == username {
-			return m, nil
+			copy := *m
+			return &copy, nil
 		}
 	}
 	return nil, nil
@@ -103,7 +106,8 @@ func (r *inMemoryWalletRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	if !ok {
 		return nil, nil
 	}
-	return w, nil
+	copy := *w
+	return &copy, nil
 }
 
 func (r *inMemoryWalletRepo) GetByMerchantID(ctx context.Context, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
@@ -111,7 +115,8 @@ func (r *inMemoryWalletRepo) GetByMerchantID(ctx context.Context, merchantID uui
 	defer r.mu.RUnlock()
 	for _, w := range r.wallets {
 		if w.MerchantID == merchantID && w.Currency == currency {
-			return w, nil
+			copy := *w
+			return &copy, nil
 		}
 	}
 	return nil, nil
@@ -161,7 +166,8 @@ func (r *inMemoryTransactionRepo) GetByID(ctx context.Context, id uuid.UUID) (*d
 	if !ok {
 		return nil, nil
 	}
-	return t, nil
+	copy := *t
+	return &copy, nil
 }
 
 func (r *inMemoryTransactionRepo) GetByReference(ctx context.Context, merchantID uuid.UUID, referenceID string) (*domain.Transaction, error) {
@@ -169,7 +175,8 @@ func (r *inMemoryTransactionRepo) GetByReference(ctx context.Context, merchantID
 	defer r.mu.RUnlock()
 	for _, t := range r.transactions {
 		if t.MerchantID == merchantID && t.ReferenceID == referenceID {
-			return t, nil
+			copy := *t
+			return &copy, nil
 		}
 	}
 	return nil, nil
@@ -286,7 +293,8 @@ func (r *inMemoryIdempotencyRepo) Get(ctx context.Context, key string) (*domain.
 	if !ok {
 		return nil, nil
 	}
-	return l, nil
+	copy := *l
+	return &copy, nil
 }
 
 // --- In-Memory Transactor (no-op tx) ---
