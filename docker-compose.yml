@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  # ---- PostgreSQL ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: spg-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payment_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spg-network
+
+  # ---- Redis ----
+  redis:
+    image: redis:7-alpine
+    container_name: spg-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spg-network
+
+  # ---- Application ----
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spg-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPG_SERVER_MODE: release
+      SPG_DATABASE_HOST: postgres
+      SPG_DATABASE_PORT: "5432"
+      SPG_DATABASE_USER: postgres
+      SPG_DATABASE_PASSWORD: postgres
+      SPG_DATABASE_DBNAME: payment_gateway
+      SPG_DATABASE_SSLMODE: disable
+      SPG_REDIS_HOST: redis
+      SPG_REDIS_PORT: "6379"
+      SPG_JWT_SECRET: "${JWT_SECRET:-change-me-use-strong-secret-in-production-32}"
+      SPG_AES_KEY: "${AES_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+      SPG_LOG_LEVEL: info
+      SPG_LOG_PRETTY: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spg-network
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  spg-network:
+    driver: bridge

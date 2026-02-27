@@ -36,6 +36,7 @@ func (h *PaymentHandler) ProcessPayment(c *gin.Context) {
 		response.Error(c, apperror.Validation(err.Error()))
 		return
 	}
+	dto.SanitizeStruct(&req)
 
 	result, err := h.paymentSvc.ProcessPayment(c.Request.Context(), ports.PaymentRequest{
 		MerchantID:  merchantID.(uuid.UUID),
@@ -71,6 +72,7 @@ func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
 		response.Error(c, apperror.Validation(err.Error()))
 		return
 	}
+	dto.SanitizeStruct(&req)
 
 	result, err := h.paymentSvc.ProcessRefund(c.Request.Context(), ports.RefundRequest{
 		MerchantID:          merchantID.(uuid.UUID),

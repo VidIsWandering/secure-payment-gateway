@@ -21,6 +21,9 @@ type RouterDeps struct {
 	NonceStore     ports.NonceStore
 	TokenSvc       ports.TokenService
 	RateLimitStore *redisStore.RateLimitStore // nil = rate limiting disabled
+	HealthCheckers []ports.HealthChecker
+	MerchantSvc    ports.MerchantManagementService // nil = merchant management disabled
+	AuditSvc       ports.AuditService              // nil = audit logging disabled
 	Logger         zerolog.Logger
 }
 
@@ -32,9 +35,22 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	// Global middleware
 	r.Use(middleware.Recovery(deps.Logger))
 	r.Use(middleware.RequestLogger(deps.Logger))
+	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB request body limit
 
-	// Health check
-	r.GET("/health", HealthCheck())
+	// Audit logging (after response)
+	if deps.AuditSvc != nil {
+		r.Use(middleware.AuditLog(deps.AuditSvc))
+	}
+
+	// Health check (deep — verifies PostgreSQL + Redis)
+	r.GET("/health", HealthCheck(deps.HealthCheckers...))
+
+	// Swagger documentation
+	swagger := r.Group("/swagger")
+	{
+		swagger.GET("", SwaggerUI)
+		swagger.GET("/spec", SwaggerSpec)
+	}
 
 	// Rate limit rules
 	rules := middleware.DefaultRateLimitRules()
@@ -90,6 +106,17 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	transactions := v1.Group("/transactions", jwtAuth)
 	{
 		transactions.GET("", rl("dashboard"), dashboardHandler.ListTransactions)
+	}
+
+	// --- Merchant management (JWT-authenticated) ---
+	if deps.MerchantSvc != nil {
+		merchantHandler := NewMerchantHandler(deps.MerchantSvc)
+		merchants := v1.Group("/merchants/me", jwtAuth)
+		{
+			merchants.GET("", rl("dashboard"), merchantHandler.GetProfile)
+			merchants.PUT("/webhook", rl("dashboard"), merchantHandler.UpdateWebhookURL)
+			merchants.POST("/rotate-keys", rl("dashboard"), merchantHandler.RotateKeys)
+		}
 	}
 
 	return r

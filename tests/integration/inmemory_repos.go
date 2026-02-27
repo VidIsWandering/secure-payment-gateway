@@ -68,6 +68,16 @@ func (r *inMemoryMerchantRepo) GetByUsername(ctx context.Context, username strin
 	return nil, nil
 }
 
+func (r *inMemoryMerchantRepo) Update(ctx context.Context, m *domain.Merchant) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.merchants[m.ID]; !ok {
+		return fmt.Errorf("merchant not found")
+	}
+	r.merchants[m.ID] = m
+	return nil
+}
+
 // --- In-Memory Wallet Repo ---
 
 type inMemoryWalletRepo struct {

@@ -1,0 +1,41 @@
+# Build artifacts
+bin/
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment & secrets
+.env
+.env.*
+*.local
+config.yaml
+config.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# AI scaffolding docs (not for public sharing)
+AI_INSTRUCTIONS.md
+PROJECT_STRUCTURE.md
+TECH_STACK.md

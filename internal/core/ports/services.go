@@ -122,3 +122,31 @@ type ReportingService interface {
 type WebhookService interface {
 	EnqueueWebhook(ctx context.Context, transaction *domain.Transaction) error
 }
+
+// MerchantProfile is the read-only view of a merchant returned by GetProfile.
+type MerchantProfile struct {
+	ID           uuid.UUID
+	Username     string
+	MerchantName string
+	WebhookURL   *string
+	Status       domain.MerchantStatus
+	CreatedAt    string
+}
+
+// RotateKeysResponse holds the new keys after rotation.
+type RotateKeysResponse struct {
+	AccessKey string
+	SecretKey string // plaintext, shown only once
+}
+
+// MerchantManagementService defines merchant self-service operations.
+type MerchantManagementService interface {
+	GetProfile(ctx context.Context, merchantID uuid.UUID) (*MerchantProfile, error)
+	UpdateWebhookURL(ctx context.Context, merchantID uuid.UUID, webhookURL *string) error
+	RotateKeys(ctx context.Context, merchantID uuid.UUID) (*RotateKeysResponse, error)
+}
+
+// AuditService records audit trail entries asynchronously.
+type AuditService interface {
+	Log(ctx context.Context, log *domain.AuditLog)
+}
