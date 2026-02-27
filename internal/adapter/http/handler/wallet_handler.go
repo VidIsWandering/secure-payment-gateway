@@ -60,6 +60,7 @@ func (h *WalletHandler) Topup(c *gin.Context) {
 		response.Error(c, apperror.Validation(err.Error()))
 		return
 	}
+	dto.SanitizeStruct(&req)
 
 	result, err := h.paymentSvc.ProcessTopup(c.Request.Context(), ports.TopupRequest{
 		MerchantID: merchantID.(uuid.UUID),

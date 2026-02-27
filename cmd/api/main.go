@@ -13,6 +13,7 @@ import (
 	httpHandler "secure-payment-gateway/internal/adapter/http/handler"
 	pgStorage "secure-payment-gateway/internal/adapter/storage/postgres"
 	redisStorage "secure-payment-gateway/internal/adapter/storage/redis"
+	"secure-payment-gateway/internal/core/ports"
 	"secure-payment-gateway/internal/service"
 	"secure-payment-gateway/pkg/logger"
 )
@@ -83,10 +84,26 @@ func main() {
 		log,
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
-	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log)
+	webhookRepo := pgStorage.NewWebhookRepository(pool)
+	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log, webhookRepo)
+	merchantSvc := service.NewMerchantService(merchantRepo, encSvc)
+	auditRepo := pgStorage.NewAuditRepository(pool)
+	auditSvc := service.NewAuditService(auditRepo, log)
 
 	// Initialize rate limit store
 	rateLimitStore := redisStorage.NewRateLimitStore(rdb)
+
+	// Initialize health checkers
+	pgHealth := pgStorage.NewHealthCheck(pool)
+	redisHealth := redisStorage.NewHealthCheck(rdb)
+
+	// Load OpenAPI spec for Swagger UI
+	if specBytes, err := os.ReadFile("docs/api/openapi.yaml"); err == nil {
+		httpHandler.SetSwaggerSpec(specBytes)
+		log.Info().Msg("OpenAPI spec loaded for Swagger UI at /swagger")
+	} else {
+		log.Warn().Err(err).Msg("OpenAPI spec not found, Swagger UI will be unavailable")
+	}
 
 	// Setup Gin router with all routes
 	router := httpHandler.SetupRouter(httpHandler.RouterDeps{
@@ -100,6 +117,9 @@ func main() {
 		NonceStore:     nonceStore,
 		TokenSvc:       tokenSvc,
 		RateLimitStore: rateLimitStore,
+		HealthCheckers: []ports.HealthChecker{pgHealth, redisHealth},
+		MerchantSvc:    merchantSvc,
+		AuditSvc:       auditSvc,
 		Logger:         log,
 	})
 

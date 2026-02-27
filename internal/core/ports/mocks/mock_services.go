@@ -573,3 +573,107 @@ func (mr *MockWebhookServiceMockRecorder) EnqueueWebhook(ctx, transaction any) *
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueWebhook", reflect.TypeOf((*MockWebhookService)(nil).EnqueueWebhook), ctx, transaction)
 }
+
+// MockMerchantManagementService is a mock of MerchantManagementService interface.
+type MockMerchantManagementService struct {
+	ctrl     *gomock.Controller
+	recorder *MockMerchantManagementServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockMerchantManagementServiceMockRecorder is the mock recorder for MockMerchantManagementService.
+type MockMerchantManagementServiceMockRecorder struct {
+	mock *MockMerchantManagementService
+}
+
+// NewMockMerchantManagementService creates a new mock instance.
+func NewMockMerchantManagementService(ctrl *gomock.Controller) *MockMerchantManagementService {
+	mock := &MockMerchantManagementService{ctrl: ctrl}
+	mock.recorder = &MockMerchantManagementServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMerchantManagementService) EXPECT() *MockMerchantManagementServiceMockRecorder {
+	return m.recorder
+}
+
+// GetProfile mocks base method.
+func (m *MockMerchantManagementService) GetProfile(ctx context.Context, merchantID uuid.UUID) (*ports.MerchantProfile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfile", ctx, merchantID)
+	ret0, _ := ret[0].(*ports.MerchantProfile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfile indicates an expected call of GetProfile.
+func (mr *MockMerchantManagementServiceMockRecorder) GetProfile(ctx, merchantID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfile", reflect.TypeOf((*MockMerchantManagementService)(nil).GetProfile), ctx, merchantID)
+}
+
+// RotateKeys mocks base method.
+func (m *MockMerchantManagementService) RotateKeys(ctx context.Context, merchantID uuid.UUID) (*ports.RotateKeysResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RotateKeys", ctx, merchantID)
+	ret0, _ := ret[0].(*ports.RotateKeysResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RotateKeys indicates an expected call of RotateKeys.
+func (mr *MockMerchantManagementServiceMockRecorder) RotateKeys(ctx, merchantID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RotateKeys", reflect.TypeOf((*MockMerchantManagementService)(nil).RotateKeys), ctx, merchantID)
+}
+
+// UpdateWebhookURL mocks base method.
+func (m *MockMerchantManagementService) UpdateWebhookURL(ctx context.Context, merchantID uuid.UUID, webhookURL *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateWebhookURL", ctx, merchantID, webhookURL)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateWebhookURL indicates an expected call of UpdateWebhookURL.
+func (mr *MockMerchantManagementServiceMockRecorder) UpdateWebhookURL(ctx, merchantID, webhookURL any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWebhookURL", reflect.TypeOf((*MockMerchantManagementService)(nil).UpdateWebhookURL), ctx, merchantID, webhookURL)
+}
+
+// MockAuditService is a mock of AuditService interface.
+type MockAuditService struct {
+	ctrl     *gomock.Controller
+	recorder *MockAuditServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockAuditServiceMockRecorder is the mock recorder for MockAuditService.
+type MockAuditServiceMockRecorder struct {
+	mock *MockAuditService
+}
+
+// NewMockAuditService creates a new mock instance.
+func NewMockAuditService(ctrl *gomock.Controller) *MockAuditService {
+	mock := &MockAuditService{ctrl: ctrl}
+	mock.recorder = &MockAuditServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAuditService) EXPECT() *MockAuditServiceMockRecorder {
+	return m.recorder
+}
+
+// Log mocks base method.
+func (m *MockAuditService) Log(ctx context.Context, log *domain.AuditLog) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Log", ctx, log)
+}
+
+// Log indicates an expected call of Log.
+func (mr *MockAuditServiceMockRecorder) Log(ctx, log any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockAuditService)(nil).Log), ctx, log)
+}

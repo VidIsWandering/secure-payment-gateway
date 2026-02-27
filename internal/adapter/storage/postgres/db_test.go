@@ -36,7 +36,16 @@ func TestDefaultPoolConfig(t *testing.T) {
 		ConnMaxLifetime: 30 * time.Minute,
 	}
 
-	// Verify config values are set correctly.
+	// Verify DSN is constructed correctly with all fields.
+	dsn := cfg.DSN()
+	assert.Contains(t, dsn, "testuser")
+	assert.Contains(t, dsn, "testpass")
+	assert.Contains(t, dsn, "localhost")
+	assert.Contains(t, dsn, "5432")
+	assert.Contains(t, dsn, "testdb")
+	assert.Contains(t, dsn, "disable")
+
+	// Verify pool-specific config values.
 	assert.Equal(t, int32(20), cfg.MaxConns)
 	assert.Equal(t, int32(5), cfg.MinConns)
 	assert.Equal(t, 30*time.Minute, cfg.ConnMaxLifetime)

@@ -15,6 +15,7 @@ type MerchantRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error)
 	GetByAccessKey(ctx context.Context, accessKey string) (*domain.Merchant, error)
 	GetByUsername(ctx context.Context, username string) (*domain.Merchant, error)
+	Update(ctx context.Context, merchant *domain.Merchant) error
 }
 
 // WalletRepository defines persistence operations for wallets.
@@ -66,6 +67,18 @@ type TransactionStats struct {
 type IdempotencyRepository interface {
 	Create(ctx context.Context, tx pgx.Tx, log *domain.IdempotencyLog) error
 	Get(ctx context.Context, key string) (*domain.IdempotencyLog, error)
+}
+
+// WebhookRepository defines persistence for webhook delivery logs.
+type WebhookRepository interface {
+	Create(ctx context.Context, log *domain.WebhookDeliveryLog) error
+	Update(ctx context.Context, log *domain.WebhookDeliveryLog) error
+	GetByTransactionID(ctx context.Context, txID uuid.UUID) ([]domain.WebhookDeliveryLog, error)
+}
+
+// AuditRepository defines persistence for audit logs.
+type AuditRepository interface {
+	Create(ctx context.Context, log *domain.AuditLog) error
 }
 
 // DBTransactor provides database transaction management.

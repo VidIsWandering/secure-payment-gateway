@@ -96,3 +96,17 @@ func (r *MerchantRepo) GetByUsername(ctx context.Context, username string) (*dom
 	}
 	return m, nil
 }
+
+// Update updates a merchant record.
+func (r *MerchantRepo) Update(ctx context.Context, m *domain.Merchant) error {
+	query := `UPDATE merchants
+		SET merchant_name=$1, webhook_url=$2, access_key=$3, secret_key_enc=$4, status=$5, updated_at=NOW()
+		WHERE id=$6`
+	_, err := r.pool.Exec(ctx, query,
+		m.MerchantName, m.WebhookURL, m.AccessKey, m.SecretKeyEnc, m.Status, m.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("update merchant: %w", err)
+	}
+	return nil
+}

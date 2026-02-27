@@ -103,6 +103,20 @@ func (mr *MockMerchantRepositoryMockRecorder) GetByUsername(ctx, username any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUsername", reflect.TypeOf((*MockMerchantRepository)(nil).GetByUsername), ctx, username)
 }
 
+// Update mocks base method.
+func (m *MockMerchantRepository) Update(ctx context.Context, merchant *domain.Merchant) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, merchant)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockMerchantRepositoryMockRecorder) Update(ctx, merchant any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMerchantRepository)(nil).Update), ctx, merchant)
+}
+
 // MockWalletRepository is a mock of WalletRepository interface.
 type MockWalletRepository struct {
 	ctrl     *gomock.Controller
@@ -394,6 +408,111 @@ func (m *MockIdempotencyRepository) Get(ctx context.Context, key string) (*domai
 func (mr *MockIdempotencyRepositoryMockRecorder) Get(ctx, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIdempotencyRepository)(nil).Get), ctx, key)
+}
+
+// MockWebhookRepository is a mock of WebhookRepository interface.
+type MockWebhookRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockWebhookRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockWebhookRepositoryMockRecorder is the mock recorder for MockWebhookRepository.
+type MockWebhookRepositoryMockRecorder struct {
+	mock *MockWebhookRepository
+}
+
+// NewMockWebhookRepository creates a new mock instance.
+func NewMockWebhookRepository(ctrl *gomock.Controller) *MockWebhookRepository {
+	mock := &MockWebhookRepository{ctrl: ctrl}
+	mock.recorder = &MockWebhookRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWebhookRepository) EXPECT() *MockWebhookRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockWebhookRepository) Create(ctx context.Context, log *domain.WebhookDeliveryLog) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, log)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockWebhookRepositoryMockRecorder) Create(ctx, log any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWebhookRepository)(nil).Create), ctx, log)
+}
+
+// GetByTransactionID mocks base method.
+func (m *MockWebhookRepository) GetByTransactionID(ctx context.Context, txID uuid.UUID) ([]domain.WebhookDeliveryLog, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByTransactionID", ctx, txID)
+	ret0, _ := ret[0].([]domain.WebhookDeliveryLog)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByTransactionID indicates an expected call of GetByTransactionID.
+func (mr *MockWebhookRepositoryMockRecorder) GetByTransactionID(ctx, txID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByTransactionID", reflect.TypeOf((*MockWebhookRepository)(nil).GetByTransactionID), ctx, txID)
+}
+
+// Update mocks base method.
+func (m *MockWebhookRepository) Update(ctx context.Context, log *domain.WebhookDeliveryLog) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, log)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockWebhookRepositoryMockRecorder) Update(ctx, log any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockWebhookRepository)(nil).Update), ctx, log)
+}
+
+// MockAuditRepository is a mock of AuditRepository interface.
+type MockAuditRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockAuditRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockAuditRepositoryMockRecorder is the mock recorder for MockAuditRepository.
+type MockAuditRepositoryMockRecorder struct {
+	mock *MockAuditRepository
+}
+
+// NewMockAuditRepository creates a new mock instance.
+func NewMockAuditRepository(ctrl *gomock.Controller) *MockAuditRepository {
+	mock := &MockAuditRepository{ctrl: ctrl}
+	mock.recorder = &MockAuditRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAuditRepository) EXPECT() *MockAuditRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockAuditRepository) Create(ctx context.Context, log *domain.AuditLog) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, log)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockAuditRepositoryMockRecorder) Create(ctx, log any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockAuditRepository)(nil).Create), ctx, log)
 }
 
 // MockDBTransactor is a mock of DBTransactor interface.
