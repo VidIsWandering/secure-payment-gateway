@@ -29,23 +29,21 @@ Architecture Pattern: Clean Architecture (Port & Adapter)
 │   │   ├── signature_service.go   # HMAC-SHA256 sign/verify.
 │   │   └── webhook_service.go     # Async webhook dispatch + retry logic.
 │   └── adapter/                   # INFRASTRUCTURE LAYER
-│       ├── handler/               # HTTP Controllers.
+│       ├── http/                  # HTTP transport layer (Gin)
 │       │   ├── dto/               # Request/Response structs with validation tags.
-│       │   │   ├── auth_dto.go
-│       │   │   ├── payment_dto.go
-│       │   │   ├── wallet_dto.go
-│       │   │   └── reporting_dto.go
-│       │   └── http/              # Gin handler implementations.
-│       │       ├── auth_handler.go
-│       │       ├── payment_handler.go
-│       │       ├── wallet_handler.go
-│       │       ├── reporting_handler.go
-│       │       └── router.go      # Route registration + middleware binding.
-│       ├── middleware/            # CRITICAL CROSS-CUTTING CONCERNS
-│       │   ├── auth.go            # JWT verification middleware.
-│       │   ├── signature.go       # HMAC-SHA256 signature + replay attack middleware.
-│       │   ├── ratelimit.go       # Redis-backed rate limiting.
-│       │   └── request_id.go      # Unique request ID injection.
+│       │   │   ├── dto.go
+│       │   │   └── validators.go
+│       │   ├── handler/           # Gin handler implementations.
+│       │   │   ├── auth_handler.go
+│       │   │   ├── payment_handler.go
+│       │   │   ├── wallet_handler.go
+│       │   │   ├── dashboard_handler.go
+│       │   │   └── router.go      # Route registration + middleware binding.
+│       │   └── middleware/        # CRITICAL CROSS-CUTTING CONCERNS
+│       │       ├── middleware.go  # Recovery, logger, auth middleware
+│       │       ├── ratelimit.go   # Redis-backed rate limiting
+│       │       ├── request_id.go  # Unique request ID injection
+│       │       └── sanitizer.go   # Body size + input sanitization
 │       └── storage/               # Database & Cache implementations.
 │           ├── postgres/          # PostgreSQL repository implementations.
 │           │   ├── merchant_repo.go
@@ -66,11 +64,7 @@ Architecture Pattern: Clean Architecture (Port & Adapter)
 ├── db/
 │   ├── schema.sql                 # Full DDL schema.
 │   ├── migrations/                # golang-migrate migration files.
-│   └── queries/                   # sqlc query files.
-│       ├── merchant.sql
-│       ├── wallet.sql
-│       ├── transaction.sql
-│       └── idempotency.sql
+│   └── ...                        # Other SQL assets as needed.
 └── docs/
     ├── TRANSACTION_STRATEGY.md
     └── api/

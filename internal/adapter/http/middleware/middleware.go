@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -192,10 +193,8 @@ func Recovery(log zerolog.Logger) gin.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Error().Interface("panic", r).Str("path", c.Request.URL.Path).Msg("panic recovered")
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-					"error_code": "SYS_001",
-					"message":    "Internal server error",
-				})
+				response.Error(c, apperror.InternalError(fmt.Errorf("panic: %v", r)))
+				c.Abort()
 			}
 		}()
 		c.Next()

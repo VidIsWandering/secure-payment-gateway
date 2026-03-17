@@ -80,6 +80,19 @@ CREATE TABLE webhook_delivery_logs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 6. AUDIT LOGS TABLE
+-- Tracks security-sensitive and write operations for audit/compliance
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    merchant_id UUID REFERENCES merchants(id),
+    action VARCHAR(50) NOT NULL,
+    resource_type VARCHAR(50) NOT NULL,
+    resource_id VARCHAR(100),
+    details JSONB,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- INDEXES FOR PERFORMANCE
 CREATE INDEX idx_transactions_merchant ON transactions(merchant_id);
 CREATE INDEX idx_transactions_ref ON transactions(reference_id);
@@ -91,3 +104,6 @@ CREATE INDEX idx_webhook_logs_pending ON webhook_delivery_logs(status, next_retr
     WHERE status = 'PENDING';
 CREATE INDEX idx_webhook_logs_transaction ON webhook_delivery_logs(transaction_id);
 CREATE INDEX idx_merchants_status ON merchants(status);
+CREATE INDEX idx_audit_logs_merchant ON audit_logs(merchant_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);

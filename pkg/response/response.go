@@ -74,5 +74,5 @@ func getRequestID(c *gin.Context) string {
 			return s
 		}
 	}
-	return uuid.New().String()
+	return "req_" + uuid.New().String()
 }

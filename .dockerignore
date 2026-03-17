@@ -8,3 +8,9 @@ tests/
 .idea/
 tmp/
 vendor/
+.github/
+bin/
+coverage.out
+coverage.html
+.golangci.yml
+Makefile

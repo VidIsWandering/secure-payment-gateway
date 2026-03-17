@@ -4,17 +4,17 @@ A production-ready payment gateway API built in Go following Clean Architecture 
 
 ## Features
 
-- **Payment Processing** — Create payments with idempotency protection, automatic balance deduction, and signature verification
-- **Refund & Top-up** — Full refund workflow and wallet top-up with transaction history
-- **Merchant Authentication** — API key/secret + HMAC signature auth, JWT-based session tokens
-- **Security** — AES-256-GCM encryption, HMAC-SHA256 signatures, Argon2id password hashing, replay-attack prevention via nonce store
-- **Webhook Delivery** — Asynchronous webhook notifications with retry logic and delivery persistence
-- **Rate Limiting** — Redis-backed sliding-window rate limiter per merchant
-- **Audit Logging** — Automatic audit trail for all write operations
-- **Reporting Dashboard** — Revenue summaries, success rates, and transaction history
-- **Swagger UI** — Built-in API documentation at `/swagger`
-- **Health Checks** — Deep health check endpoint with per-dependency status (PostgreSQL, Redis)
-- **Input Sanitization** — XSS protection, strict input validation, request body size limit
+-   **Payment Processing** — Create payments with idempotency protection, automatic balance deduction, and signature verification
+-   **Refund & Top-up** — Full refund workflow and wallet top-up with transaction history
+-   **Merchant Authentication** — API key/secret + HMAC signature auth, JWT-based session tokens
+-   **Security** — AES-256-GCM encryption, HMAC-SHA256 signatures, Argon2id password hashing, replay-attack prevention via nonce store
+-   **Webhook Delivery** — Asynchronous webhook notifications with retry logic and delivery persistence
+-   **Rate Limiting** — Redis-backed sliding-window rate limiter per merchant
+-   **Audit Logging** — Automatic audit trail for all write operations
+-   **Reporting Dashboard** — Revenue summaries, success rates, and transaction history
+-   **Swagger UI** — Built-in API documentation at `/swagger`
+-   **Health Checks** — Deep health check endpoint with per-dependency status (PostgreSQL, Redis)
+-   **Input Sanitization** — XSS protection, strict input validation, request body size limit
 
 ## Architecture
 
@@ -43,28 +43,28 @@ docs/api/             → OpenAPI spec, webhook spec, error codes
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Language | Go 1.23+ |
-| Web Framework | Gin |
-| Database | PostgreSQL 16 |
-| Cache/Store | Redis 7 |
-| Config | Viper (env prefix: `SPG_`) |
-| Logging | Zerolog (structured JSON) |
-| Auth | JWT (HS256), HMAC-SHA256, API Keys |
-| Encryption | AES-256-GCM |
-| Hashing | Argon2id |
-| Testing | testify, gomock, pgxmock, miniredis |
-| CI/CD | GitHub Actions |
-| Container | Docker (multi-stage build) |
+| Component     | Technology                          |
+| ------------- | ----------------------------------- |
+| Language      | Go 1.25+                            |
+| Web Framework | Gin                                 |
+| Database      | PostgreSQL 16                       |
+| Cache/Store   | Redis 7                             |
+| Config        | Viper (env prefix: `SPG_`)          |
+| Logging       | Zerolog (structured JSON)           |
+| Auth          | JWT (HS256), HMAC-SHA256, API Keys  |
+| Encryption    | AES-256-GCM                         |
+| Hashing       | Argon2id                            |
+| Testing       | testify, gomock, pgxmock, miniredis |
+| CI/CD         | GitHub Actions                      |
+| Container     | Docker (multi-stage build)          |
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.23+
-- Docker & Docker Compose
-- Make (optional)
+-   Go 1.25+
+-   Docker & Docker Compose
+-   Make (optional)
 
 ### Run with Docker Compose
 
@@ -103,65 +103,71 @@ make build
 
 All configuration is via environment variables with the `SPG_` prefix:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SPG_SERVER_PORT` | `8080` | HTTP server port |
-| `SPG_SERVER_MODE` | `debug` | Gin mode (`debug`, `release`, `test`) |
-| `SPG_DATABASE_HOST` | `localhost` | PostgreSQL host |
-| `SPG_DATABASE_PORT` | `5432` | PostgreSQL port |
-| `SPG_DATABASE_USER` | `postgres` | Database user |
-| `SPG_DATABASE_PASSWORD` | `postgres` | Database password |
-| `SPG_DATABASE_DBNAME` | `payment_gateway` | Database name |
-| `SPG_DATABASE_SSLMODE` | `disable` | SSL mode |
-| `SPG_DATABASE_MAX_CONNS` | `20` | Max pool connections |
-| `SPG_REDIS_HOST` | `localhost` | Redis host |
-| `SPG_REDIS_PORT` | `6379` | Redis port |
-| `SPG_JWT_SECRET` | — | **Required.** JWT signing key (min 32 chars) |
-| `SPG_JWT_EXPIRY` | `24h` | JWT token expiry |
-| `SPG_AES_KEY` | — | **Required.** 64-char hex key for AES-256-GCM |
-| `SPG_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
-| `SPG_LOG_PRETTY` | `false` | Human-readable logs (dev only) |
+| Variable                 | Default           | Description                                   |
+| ------------------------ | ----------------- | --------------------------------------------- |
+| `SPG_SERVER_PORT`        | `8080`            | HTTP server port                              |
+| `SPG_SERVER_MODE`        | `debug`           | Gin mode (`debug`, `release`, `test`)         |
+| `SPG_DATABASE_HOST`      | `localhost`       | PostgreSQL host                               |
+| `SPG_DATABASE_PORT`      | `5432`            | PostgreSQL port                               |
+| `SPG_DATABASE_USER`      | `postgres`        | Database user                                 |
+| `SPG_DATABASE_PASSWORD`  | `postgres`        | Database password                             |
+| `SPG_DATABASE_DBNAME`    | `payment_gateway` | Database name                                 |
+| `SPG_DATABASE_SSLMODE`   | `disable`         | SSL mode                                      |
+| `SPG_DATABASE_MAX_CONNS` | `20`              | Max pool connections                          |
+| `SPG_REDIS_HOST`         | `localhost`       | Redis host                                    |
+| `SPG_REDIS_PORT`         | `6379`            | Redis port                                    |
+| `SPG_JWT_SECRET`         | —                 | **Required.** JWT signing key (min 32 chars)  |
+| `SPG_JWT_EXPIRY`         | `24h`             | JWT token expiry                              |
+| `SPG_AES_KEY`            | —                 | **Required.** 64-char hex key for AES-256-GCM |
+| `SPG_LOG_LEVEL`          | `info`            | Log level (`debug`, `info`, `warn`, `error`)  |
+| `SPG_LOG_PRETTY`         | `false`           | Human-readable logs (dev only)                |
 
 ## API Endpoints
 
 ### Authentication
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/v1/auth/register` | Register a new merchant |
-| `POST` | `/api/v1/auth/login` | Login and obtain JWT token |
+
+| Method | Path                    | Description                |
+| ------ | ----------------------- | -------------------------- |
+| `POST` | `/api/v1/auth/register` | Register a new merchant    |
+| `POST` | `/api/v1/auth/login`    | Login and obtain JWT token |
 
 ### Payments
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/v1/payments` | API Key + Signature | Create a payment |
-| `POST` | `/api/v1/payments/refund` | API Key + Signature | Refund a transaction |
-| `GET` | `/api/v1/payments/:id/status` | JWT | Get payment status |
+
+| Method | Path                          | Auth                | Description          |
+| ------ | ----------------------------- | ------------------- | -------------------- |
+| `POST` | `/api/v1/payments`            | API Key + Signature | Create a payment     |
+| `POST` | `/api/v1/payments/refund`     | API Key + Signature | Refund a transaction |
+| `GET`  | `/api/v1/payments/:id/status` | JWT                 | Get payment status   |
 
 ### Wallets
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/v1/wallets/topup` | API Key + Signature | Top up wallet |
-| `GET` | `/api/v1/wallets/balance` | JWT | Get wallet balance |
+
+| Method | Path                      | Auth                | Description        |
+| ------ | ------------------------- | ------------------- | ------------------ |
+| `POST` | `/api/v1/wallets/topup`   | API Key + Signature | Top up wallet      |
+| `GET`  | `/api/v1/wallets/balance` | JWT                 | Get wallet balance |
 
 ### Merchant Management
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/v1/merchants/me` | JWT | Get merchant profile |
-| `PUT` | `/api/v1/merchants/me/webhook` | JWT | Update webhook URL |
-| `POST` | `/api/v1/merchants/me/rotate-keys` | JWT | Rotate API keys |
+
+| Method | Path                               | Auth | Description          |
+| ------ | ---------------------------------- | ---- | -------------------- |
+| `GET`  | `/api/v1/merchants/me`             | JWT  | Get merchant profile |
+| `PUT`  | `/api/v1/merchants/me/webhook`     | JWT  | Update webhook URL   |
+| `POST` | `/api/v1/merchants/me/rotate-keys` | JWT  | Rotate API keys      |
 
 ### Reporting
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/v1/dashboard/summary` | JWT | Revenue & success rate summary |
-| `GET` | `/api/v1/transactions` | JWT | Transaction history |
+
+| Method | Path                      | Auth | Description                    |
+| ------ | ------------------------- | ---- | ------------------------------ |
+| `GET`  | `/api/v1/dashboard/stats` | JWT  | Revenue & success rate summary |
+| `GET`  | `/api/v1/transactions`    | JWT  | Transaction history            |
 
 ### System
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Deep health check |
-| `GET` | `/swagger` | Swagger UI |
-| `GET` | `/swagger/spec` | OpenAPI YAML spec |
+
+| Method | Path            | Description       |
+| ------ | --------------- | ----------------- |
+| `GET`  | `/health`       | Deep health check |
+| `GET`  | `/swagger`      | Swagger UI        |
+| `GET`  | `/swagger/spec` | OpenAPI YAML spec |
 
 ## Testing
 
@@ -179,12 +185,13 @@ make coverage
 go test ./internal/service/... -run TestPayment -v
 ```
 
-**226 tests** across 12 packages covering:
-- Unit tests for all services, handlers, middleware, DTOs
-- PostgreSQL repository tests (pgxmock)
-- Redis store tests (miniredis)
-- Integration tests with in-memory repositories
-- Concurrency stress tests (100 concurrent payments, idempotency under race)
+**169 tests** across 12 packages covering:
+
+-   Unit tests for all services, handlers, middleware, DTOs
+-   PostgreSQL repository tests (pgxmock)
+-   Redis store tests (miniredis)
+-   Integration tests with in-memory repositories
+-   Concurrency stress tests (100 concurrent payments, idempotency under race)
 
 ## Development
 
