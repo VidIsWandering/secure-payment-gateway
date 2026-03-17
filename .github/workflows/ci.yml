@@ -68,14 +68,18 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Verify module dependencies
+        run: go mod verify
+
       - name: Run tests with coverage
         env:
-          SPG_DB_HOST: localhost
-          SPG_DB_PORT: 5432
-          SPG_DB_USER: spg
-          SPG_DB_PASSWORD: spg_secret
-          SPG_DB_NAME: spg_test
-          SPG_REDIS_ADDR: localhost:6379
+          SPG_DATABASE_HOST: localhost
+          SPG_DATABASE_PORT: 5432
+          SPG_DATABASE_USER: spg
+          SPG_DATABASE_PASSWORD: spg_secret
+          SPG_DATABASE_DBNAME: spg_test
+          SPG_REDIS_HOST: localhost
+          SPG_REDIS_PORT: 6379
         run: |
           go test ./... -race -coverprofile=coverage.out -covermode=atomic -count=1
 
@@ -124,7 +128,7 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v4
 
@@ -150,6 +154,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
 
       - name: Run govulncheck
         run: |

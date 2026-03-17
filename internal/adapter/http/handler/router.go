@@ -33,6 +33,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	r := gin.New()
 
 	// Global middleware
+	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery(deps.Logger))
 	r.Use(middleware.RequestLogger(deps.Logger))
 	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB request body limit
