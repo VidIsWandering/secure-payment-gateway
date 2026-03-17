@@ -11,6 +11,11 @@ import (
 )
 
 func TestLoad_Defaults(t *testing.T) {
+	// Unset any SPG_* env vars injected by CI so that pure defaults are tested.
+	// t.Setenv("") would set to empty string, which viper still treats as an override;
+	// os.Unsetenv removes the variable entirely, restoring via t.Cleanup.
+	unsetSPGEnvVars(t)
+
 	// When no config file and no env vars, defaults should apply.
 	cfg, err := Load("/non/existent/path/config.yaml")
 	// File not found is OK — we fall back to defaults.
@@ -46,6 +51,9 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_FromYAMLFile(t *testing.T) {
+	// Unset any SPG_* env vars injected by CI so that only the YAML file values are tested.
+	unsetSPGEnvVars(t)
+
 	// Create a temporary YAML config.
 	content := []byte(`
 server:
@@ -141,4 +149,27 @@ func TestRedisConfig_Addr(t *testing.T) {
 	}
 
 	assert.Equal(t, "redis.local:6380", redisCfg.Addr())
+}
+
+// unsetSPGEnvVars removes all SPG_* environment variables that CI injects for
+// integration-test services. It registers a t.Cleanup to restore each variable
+// to its original value once the test finishes, so sibling tests are unaffected.
+func unsetSPGEnvVars(t *testing.T) {
+	t.Helper()
+	keys := []string{
+		"SPG_DATABASE_HOST", "SPG_DATABASE_PORT", "SPG_DATABASE_USER",
+		"SPG_DATABASE_PASSWORD", "SPG_DATABASE_DBNAME",
+		"SPG_REDIS_HOST", "SPG_REDIS_PORT", "SPG_REDIS_PASSWORD", "SPG_REDIS_DB",
+		"SPG_SERVER_HOST", "SPG_SERVER_PORT", "SPG_SERVER_MODE",
+		"SPG_JWT_SECRET", "SPG_JWT_EXPIRY", "SPG_JWT_ISSUER",
+	}
+	for _, key := range keys {
+		original, existed := os.LookupEnv(key)
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatalf("failed to unset %s: %v", key, err)
+		}
+		if existed {
+			t.Cleanup(func() { os.Setenv(key, original) }) //nolint:errcheck
+		}
+	}
 }
