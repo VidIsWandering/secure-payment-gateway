@@ -16,6 +16,38 @@ A production-ready payment gateway API built in Go following Clean Architecture 
 -   **Health Checks** — Deep health check endpoint with per-dependency status (PostgreSQL, Redis)
 -   **Input Sanitization** — XSS protection, strict input validation, request body size limit
 
+## System Architecture
+
+```mermaid
+graph TD
+    Client[Client / Merchant App] -->|HTTPS Request| API[API Gateway / Gin Router]
+    
+    subgraph "Input & Validation Layer"
+        API --> Auth[Auth Middleware]
+        API --> RateLimit[Rate Limit Middleware]
+    end
+
+    subgraph "Core Business Layer (Application)"
+        Auth --> PaymentSVC[Payment Service]
+        Auth --> AuthSVC[Auth Service]
+        PaymentSVC --> IdempotencyLogic[Idempotency Check]
+        PaymentSVC --> SecSVC[EncSvc / SigSvc]
+    end
+
+    subgraph "Storage Layer"
+        RateLimit -.-> RedisStore[(Redis\nRate Limiter)]
+        IdempotencyLogic -.-> RedisStore[(Redis\nCache)]
+        PaymentSVC --> DB[(PostgreSQL\nACID & Pessimistic Locks)]
+        AuthSVC --> DB
+    end
+
+    subgraph "Async Processes"
+        PaymentSVC --> WebhookQ[Webhook Queue]
+        WebhookQ -.-> Retries[Retry Mechanism\nExpo-backoff]
+        Retries --> ClientWebhook[Merchant Webhook URL]
+    end
+```
+
 ## Architecture
 
 ```
