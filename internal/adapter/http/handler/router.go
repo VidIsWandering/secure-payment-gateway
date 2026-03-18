@@ -46,6 +46,9 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	// Health check (deep — verifies PostgreSQL + Redis)
 	r.GET("/health", HealthCheck(deps.HealthCheckers...))
 
+	// Merchant Dashboard UI (serves embedded SPA; handles its own JWT auth client-side)
+	r.GET("/dashboard", DashboardUI)
+
 	// Swagger documentation
 	swagger := r.Group("/swagger")
 	{
