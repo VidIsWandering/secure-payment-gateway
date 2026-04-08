@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS wallets (
     encrypted_balance TEXT NOT NULL,
     last_audit_hash VARCHAR(64),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(merchant_id, currency)
 );
 
 -- 3. TRANSACTIONS
@@ -34,7 +35,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     reference_id VARCHAR(100) NOT NULL,
     merchant_id UUID NOT NULL REFERENCES merchants(id),
     wallet_id UUID NOT NULL REFERENCES wallets(id),
-    amount DECIMAL(20, 2) NOT NULL,
+    amount BIGINT NOT NULL,
     amount_encrypted TEXT NOT NULL,
     transaction_type VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -70,7 +71,7 @@ CREATE TABLE IF NOT EXISTS webhook_delivery_logs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. AUDIT LOGS (for phase H)
+-- 6. AUDIT LOGS
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     merchant_id UUID REFERENCES merchants(id),
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_transactions_merchant ON transactions(merchant_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_ref ON transactions(reference_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_merchant_ref ON transactions(merchant_id, reference_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type);
 CREATE INDEX IF NOT EXISTS idx_transactions_created ON transactions(created_at);

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	redisStore "secure-payment-gateway/internal/adapter/storage/redis"
+	"secure-payment-gateway/internal/core/ports"
 	"secure-payment-gateway/pkg/apperror"
 	"secure-payment-gateway/pkg/response"
 
@@ -32,7 +32,7 @@ func DefaultRateLimitRules() map[string]RateLimitRule {
 }
 
 // RateLimiter creates a rate-limiting middleware for a given endpoint group.
-func RateLimiter(store *redisStore.RateLimitStore, group string, rule RateLimitRule, log zerolog.Logger) gin.HandlerFunc {
+func RateLimiter(store ports.RateLimitStore, group string, rule RateLimitRule, log zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		identifier := extractIdentifier(c)
 		key := fmt.Sprintf("%s:%s", identifier, group)

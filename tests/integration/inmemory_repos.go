@@ -9,8 +9,6 @@ import (
 	"secure-payment-gateway/internal/core/ports"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // --- In-Memory Merchant Repo ---
@@ -34,6 +32,10 @@ func (r *inMemoryMerchantRepo) Create(ctx context.Context, m *domain.Merchant) e
 	}
 	r.merchants[m.ID] = m
 	return nil
+}
+
+func (r *inMemoryMerchantRepo) CreateTx(ctx context.Context, tx ports.Tx, m *domain.Merchant) error {
+	return r.Create(ctx, m)
 }
 
 func (r *inMemoryMerchantRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error) {
@@ -99,6 +101,10 @@ func (r *inMemoryWalletRepo) Create(ctx context.Context, w *domain.Wallet) error
 	return nil
 }
 
+func (r *inMemoryWalletRepo) CreateTx(ctx context.Context, tx ports.Tx, w *domain.Wallet) error {
+	return r.Create(ctx, w)
+}
+
 func (r *inMemoryWalletRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Wallet, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -122,15 +128,15 @@ func (r *inMemoryWalletRepo) GetByMerchantID(ctx context.Context, merchantID uui
 	return nil, nil
 }
 
-func (r *inMemoryWalletRepo) GetByMerchantIDForUpdate(ctx context.Context, tx pgx.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
+func (r *inMemoryWalletRepo) GetByMerchantIDForUpdate(ctx context.Context, tx ports.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
 	return r.GetByMerchantID(ctx, merchantID, currency)
 }
 
-func (r *inMemoryWalletRepo) GetByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Wallet, error) {
+func (r *inMemoryWalletRepo) GetByIDForUpdate(ctx context.Context, tx ports.Tx, id uuid.UUID) (*domain.Wallet, error) {
 	return r.GetByID(ctx, id)
 }
 
-func (r *inMemoryWalletRepo) UpdateBalance(ctx context.Context, tx pgx.Tx, walletID uuid.UUID, encryptedBalance string) error {
+func (r *inMemoryWalletRepo) UpdateBalance(ctx context.Context, tx ports.Tx, walletID uuid.UUID, encryptedBalance string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	w, ok := r.wallets[walletID]
@@ -152,7 +158,7 @@ func newInMemoryTransactionRepo() *inMemoryTransactionRepo {
 	return &inMemoryTransactionRepo{transactions: make(map[uuid.UUID]*domain.Transaction)}
 }
 
-func (r *inMemoryTransactionRepo) Create(ctx context.Context, tx pgx.Tx, t *domain.Transaction) error {
+func (r *inMemoryTransactionRepo) Create(ctx context.Context, tx ports.Tx, t *domain.Transaction) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.transactions[t.ID] = t
@@ -182,7 +188,7 @@ func (r *inMemoryTransactionRepo) GetByReference(ctx context.Context, merchantID
 	return nil, nil
 }
 
-func (r *inMemoryTransactionRepo) UpdateStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status domain.TransactionStatus) error {
+func (r *inMemoryTransactionRepo) UpdateStatus(ctx context.Context, tx ports.Tx, id uuid.UUID, status domain.TransactionStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.transactions[id]
@@ -279,7 +285,7 @@ func newInMemoryIdempotencyRepo() *inMemoryIdempotencyRepo {
 	return &inMemoryIdempotencyRepo{logs: make(map[string]*domain.IdempotencyLog)}
 }
 
-func (r *inMemoryIdempotencyRepo) Create(ctx context.Context, tx pgx.Tx, log *domain.IdempotencyLog) error {
+func (r *inMemoryIdempotencyRepo) Create(ctx context.Context, tx ports.Tx, log *domain.IdempotencyLog) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.logs[log.Key] = log
@@ -305,31 +311,9 @@ func newInMemoryTransactor() *inMemoryTransactor {
 	return &inMemoryTransactor{}
 }
 
-func (t *inMemoryTransactor) Begin(ctx context.Context) (pgx.Tx, error) {
-	return &noopTx{}, nil
-}
-
-// noopTx is a no-op pgx.Tx implementation for in-memory testing.
+// noopTx is a no-op transaction for in-memory testing that satisfies ports.Tx (empty interface).
 type noopTx struct{}
 
-func (t *noopTx) Begin(ctx context.Context) (pgx.Tx, error) { return t, nil }
-func (t *noopTx) Commit(ctx context.Context) error          { return nil }
-func (t *noopTx) Rollback(ctx context.Context) error        { return nil }
-func (t *noopTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	return 0, nil
+func (t *inMemoryTransactor) Begin(ctx context.Context) (ports.Tx, error) {
+	return &noopTx{}, nil
 }
-func (t *noopTx) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults { return nil }
-func (t *noopTx) LargeObjects() pgx.LargeObjects                               { return pgx.LargeObjects{} }
-func (t *noopTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
-	return nil, nil
-}
-func (t *noopTx) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
-	return pgconn.NewCommandTag(""), nil
-}
-func (t *noopTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return nil, nil
-}
-func (t *noopTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	return nil
-}
-func (t *noopTx) Conn() *pgx.Conn { return nil }

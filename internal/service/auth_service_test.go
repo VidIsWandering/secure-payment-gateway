@@ -24,6 +24,7 @@ func setupAuthService(t *testing.T) (
 	*mocks.MockHashService,
 	*mocks.MockEncryptionService,
 	*mocks.MockTokenService,
+	*mocks.MockDBTransactor,
 	*gomock.Controller,
 ) {
 	ctrl := gomock.NewController(t)
@@ -32,13 +33,14 @@ func setupAuthService(t *testing.T) (
 	hashSvc := mocks.NewMockHashService(ctrl)
 	encSvc := mocks.NewMockEncryptionService(ctrl)
 	tokenSvc := mocks.NewMockTokenService(ctrl)
+	transactor := mocks.NewMockDBTransactor(ctrl)
 
-	svc := NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc)
-	return svc, merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, ctrl
+	svc := NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
+	return svc, merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor, ctrl
 }
 
 func TestAuthService_Register_Success(t *testing.T) {
-	svc, merchantRepo, walletRepo, hashSvc, encSvc, _, ctrl := setupAuthService(t)
+	svc, merchantRepo, walletRepo, hashSvc, encSvc, _, transactor, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
@@ -54,12 +56,14 @@ func TestAuthService_Register_Success(t *testing.T) {
 	hashSvc.EXPECT().Hash(req.Password).Return("$argon2id$hashed", nil)
 	// Expect: encrypt secret key
 	encSvc.EXPECT().Encrypt(gomock.Any()).Return("encrypted_secret", nil)
-	// Expect: create merchant
-	merchantRepo.EXPECT().Create(ctx, gomock.Any()).Return(nil)
 	// Expect: encrypt initial balance
 	encSvc.EXPECT().Encrypt("0").Return("encrypted_zero", nil)
-	// Expect: create wallet
-	walletRepo.EXPECT().Create(ctx, gomock.Any()).Return(nil)
+	// Expect: begin transaction
+	transactor.EXPECT().Begin(ctx).Return(&noopTestTx{}, nil)
+	// Expect: create merchant (transactional)
+	merchantRepo.EXPECT().CreateTx(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	// Expect: create wallet (transactional)
+	walletRepo.EXPECT().CreateTx(ctx, gomock.Any(), gomock.Any()).Return(nil)
 
 	resp, err := svc.Register(ctx, req)
 	require.NoError(t, err)
@@ -71,8 +75,11 @@ func TestAuthService_Register_Success(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, resp.MerchantID)
 }
 
+// noopTestTx is a no-op transaction for testing.
+type noopTestTx struct{}
+
 func TestAuthService_Register_DuplicateUsername(t *testing.T) {
-	svc, merchantRepo, _, _, _, _, ctrl := setupAuthService(t)
+	svc, merchantRepo, _, _, _, _, _, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
@@ -95,7 +102,7 @@ func TestAuthService_Register_DuplicateUsername(t *testing.T) {
 }
 
 func TestAuthService_Login_Success(t *testing.T) {
-	svc, merchantRepo, _, hashSvc, _, tokenSvc, ctrl := setupAuthService(t)
+	svc, merchantRepo, _, hashSvc, _, tokenSvc, _, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
@@ -120,7 +127,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 }
 
 func TestAuthService_Login_UserNotFound(t *testing.T) {
-	svc, merchantRepo, _, _, _, _, ctrl := setupAuthService(t)
+	svc, merchantRepo, _, _, _, _, _, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
@@ -135,7 +142,7 @@ func TestAuthService_Login_UserNotFound(t *testing.T) {
 }
 
 func TestAuthService_Login_WrongPassword(t *testing.T) {
-	svc, merchantRepo, _, hashSvc, _, _, ctrl := setupAuthService(t)
+	svc, merchantRepo, _, hashSvc, _, _, _, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
@@ -158,7 +165,7 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 }
 
 func TestAuthService_Login_MerchantSuspended(t *testing.T) {
-	svc, merchantRepo, _, hashSvc, _, _, ctrl := setupAuthService(t)
+	svc, merchantRepo, _, hashSvc, _, _, _, ctrl := setupAuthService(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()

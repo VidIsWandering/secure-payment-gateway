@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"secure-payment-gateway/internal/core/ports"
+
 	goredis "github.com/redis/go-redis/v9"
 )
 
-// RateLimitStore implements rate limiting counters backed by Redis.
+// RateLimitStore implements ports.RateLimitStore backed by Redis.
 type RateLimitStore struct {
 	client *goredis.Client
 	prefix string
@@ -22,18 +24,9 @@ func NewRateLimitStore(client *goredis.Client) *RateLimitStore {
 	}
 }
 
-// RateLimitResult holds the outcome of a rate limit check.
-type RateLimitResult struct {
-	Allowed   bool
-	Limit     int64
-	Remaining int64
-	ResetAt   int64 // Unix timestamp
-}
-
 // Allow checks if a request is within the rate limit.
 // It uses a fixed-window counter: INCR + EXPIRE on a key scoped by windowID.
-// windowID should be computed as time / windowDuration to form discrete windows.
-func (s *RateLimitStore) Allow(ctx context.Context, key string, limit int64, window time.Duration) (*RateLimitResult, error) {
+func (s *RateLimitStore) Allow(ctx context.Context, key string, limit int64, window time.Duration) (*ports.RateLimitResult, error) {
 	now := time.Now()
 	windowID := now.Unix() / int64(window.Seconds())
 	redisKey := fmt.Sprintf("%s%s:%d", s.prefix, key, windowID)
@@ -55,7 +48,7 @@ func (s *RateLimitStore) Allow(ctx context.Context, key string, limit int64, win
 		remaining = 0
 	}
 
-	return &RateLimitResult{
+	return &ports.RateLimitResult{
 		Allowed:   count <= limit,
 		Limit:     limit,
 		Remaining: remaining,

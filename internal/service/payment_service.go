@@ -12,6 +12,7 @@ import (
 	"secure-payment-gateway/pkg/apperror"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 )
 
@@ -49,6 +50,21 @@ func NewPaymentService(
 	}
 }
 
+// commitTx commits the underlying pgx.Tx from a ports.Tx.
+func commitTx(ctx context.Context, tx ports.Tx) error {
+	if pgxTx, ok := tx.(pgx.Tx); ok {
+		return pgxTx.Commit(ctx)
+	}
+	return nil // in-memory/mock tx — no-op
+}
+
+// rollbackTx rolls back the underlying pgx.Tx from a ports.Tx.
+func rollbackTx(ctx context.Context, tx ports.Tx) {
+	if pgxTx, ok := tx.(pgx.Tx); ok {
+		pgxTx.Rollback(ctx) //nolint:errcheck
+	}
+}
+
 // ProcessPayment implements the Payment algorithm with pessimistic locking.
 func (s *PaymentServiceImpl) ProcessPayment(ctx context.Context, req ports.PaymentRequest) (*domain.Transaction, error) {
 	if req.Amount <= 0 {
@@ -80,7 +96,7 @@ func (s *PaymentServiceImpl) ProcessPayment(ctx context.Context, req ports.Payme
 	if err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("begin tx: %w", err))
 	}
-	defer dbTx.Rollback(ctx) //nolint:errcheck
+	defer rollbackTx(ctx, dbTx)
 
 	// Lock & get wallet
 	wallet, err := s.walletRepo.GetByMerchantIDForUpdate(ctx, dbTx, req.MerchantID, req.Currency)
@@ -163,7 +179,7 @@ func (s *PaymentServiceImpl) ProcessPayment(ctx context.Context, req ports.Payme
 	}
 
 	// Commit
-	if err := dbTx.Commit(ctx); err != nil {
+	if err := commitTx(ctx, dbTx); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("commit tx: %w", err))
 	}
 
@@ -241,7 +257,7 @@ func (s *PaymentServiceImpl) ProcessRefund(ctx context.Context, req ports.Refund
 	if err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("begin tx: %w", err))
 	}
-	defer dbTx.Rollback(ctx) //nolint:errcheck
+	defer rollbackTx(ctx, dbTx)
 
 	// Lock & get wallet
 	wallet, err := s.walletRepo.GetByIDForUpdate(ctx, dbTx, origTx.WalletID)
@@ -325,7 +341,7 @@ func (s *PaymentServiceImpl) ProcessRefund(ctx context.Context, req ports.Refund
 	}
 
 	// Commit
-	if err := dbTx.Commit(ctx); err != nil {
+	if err := commitTx(ctx, dbTx); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("commit tx: %w", err))
 	}
 
@@ -354,7 +370,7 @@ func (s *PaymentServiceImpl) ProcessTopup(ctx context.Context, req ports.TopupRe
 	if err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("begin tx: %w", err))
 	}
-	defer dbTx.Rollback(ctx) //nolint:errcheck
+	defer rollbackTx(ctx, dbTx)
 
 	// Lock & get wallet
 	wallet, err := s.walletRepo.GetByMerchantIDForUpdate(ctx, dbTx, req.MerchantID, req.Currency)
@@ -414,7 +430,7 @@ func (s *PaymentServiceImpl) ProcessTopup(ctx context.Context, req ports.TopupRe
 	}
 
 	// Commit
-	if err := dbTx.Commit(ctx); err != nil {
+	if err := commitTx(ctx, dbTx); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("commit tx: %w", err))
 	}
 

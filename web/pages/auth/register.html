@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register | Secure Payment Gateway</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    .auth-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 80px);
+    }
+    
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      padding: 3rem 2.5rem;
+    }
+
+    .auth-title {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      font-size: 1.8rem;
+    }
+
+    .auth-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.8rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="navbar container">
+    <a href="/" class="navbar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      SecurePay
+    </a>
+    <a href="/login" class="nav-link">Sign In</a>
+  </header>
+
+  <main class="main-content container auth-wrapper">
+    <div class="glass-panel auth-card fade-in">
+      <h1 class="auth-title">Create Merchant</h1>
+      <p class="auth-subtitle">Join the gateway to start accepting secure payments.</p>
+
+      <form id="register-form">
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input type="text" id="username" class="form-control" placeholder="AcmeCorp" required minlength="3">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="merchant_name">Merchant/Business Name</label>
+          <input type="text" id="merchant_name" class="form-control" placeholder="Acme Corporation Ltd." required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Strong Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required minlength="8">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-submit" id="btn-register">Create Account</button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="/login">Sign In here</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Success Modal for displaying secret keys (which are only shown once!) -->
+  <div id="success-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+    <div class="glass-panel" style="max-width: 500px; padding: 2rem; text-align:center;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+      <h2 style="margin-bottom: 1rem; color: var(--success);">Registration Successful!</h2>
+      <p style="color: var(--warning); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        ⚠️ IMPORTANT: Save your Secret Key now. It will <strong>never</strong> be displayed again.
+      </p>
+      
+      <div style="text-align:left; margin-bottom: 1rem;">
+        <label class="form-label">Access Key</label>
+        <div class="code-block" id="ak-display" style="margin-bottom: 1rem; word-break: break-all;"></div>
+        
+        <label class="form-label">Secret Key</label>
+        <div class="code-block" id="sk-display" style="color: #ff7b72; word-break: break-all;"></div>
+      </div>
+
+      <button class="btn btn-primary btn-submit" onclick="window.location.href='/login'">I have saved my keys, Go to Login</button>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-register');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Registering...';
+
+      try {
+        const payload = {
+          username: document.getElementById('username').value,
+          merchant_name: document.getElementById('merchant_name').value,
+          password: document.getElementById('password').value,
+        };
+
+        const response = await spgAPI.call('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        // Show keys modal
+        document.getElementById('ak-display').innerText = response.access_key;
+        document.getElementById('sk-display').innerText = response.secret_key;
+        document.getElementById('success-modal').style.display = 'flex';
+        
+      } catch (err) {
+        spgAPI.showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+  </script>
+</body>
+</html>

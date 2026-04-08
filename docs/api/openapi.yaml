@@ -1,10 +1,19 @@
 openapi: 3.0.3
 info:
   title: Secure Payment Gateway API
-  version: 1.0.0
-  description: API for Merchants to process payments securely.
+  version: 2.0.0
+  description: |
+    Secure Payment Gateway API for Merchants. Supports payment processing,
+    wallet management, webhook notifications, and merchant self-service.
+    
+    **Authentication Methods:**
+    - HMAC-SHA256: For payment operations (machine-to-machine)
+    - JWT Bearer: For dashboard and management (human interaction)
 servers:
-  - url: https://api.gateway.com/v1
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: https://api.gateway.com/api/v1
+    description: Production
 
 components:
   securitySchemes:
@@ -505,3 +514,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransactionListResponse"
+
+  # ----------------------------------------------------------
+  # PAYMENT STATUS (JWT auth)
+  # ----------------------------------------------------------
+  /payments/{id}/status:
+    get:
+      tags: [Payments]
+      summary: Get payment transaction status
+      description: Returns the current status of a specific transaction.
+      operationId: getPaymentStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Transaction UUID
+      responses:
+        "200":
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "404":
+          description: Transaction not found
+
+  # ----------------------------------------------------------
+  # MERCHANT MANAGEMENT (JWT auth)
+  # ----------------------------------------------------------
+  /merchants/me:
+    get:
+      tags: [Merchant]
+      summary: Get merchant profile
+      operationId: getMerchantProfile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Merchant profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  username:
+                    type: string
+                  merchant_name:
+                    type: string
+                  webhook_url:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+
+  /merchants/me/webhook:
+    put:
+      tags: [Merchant]
+      summary: Update webhook URL
+      description: |
+        Updates the merchant's webhook URL. SSRF validation is applied:
+        private IPs, loopback, and link-local addresses are blocked.
+      operationId: updateWebhookURL
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook_url:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        "200":
+          description: Webhook URL updated
+        "400":
+          description: Invalid URL or SSRF blocked
+
+  /merchants/me/rotate-keys:
+    post:
+      tags: [Merchant]
+      summary: Rotate API keys
+      description: |
+        Generates new access_key and secret_key. Old keys are immediately invalidated.
+        secret_key is returned ONCE in plaintext.
+      operationId: rotateKeys
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: New keys generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_key:
+                    type: string
+                  secret_key:
+                    type: string

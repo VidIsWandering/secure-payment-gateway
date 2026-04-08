@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Load configuration (includes validation for JWT_SECRET, AES_KEY)
 	cfg, err := config.Load("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
@@ -73,7 +74,7 @@ func main() {
 	tokenSvc := service.NewJWTTokenService(cfg.JWT.Secret, cfg.JWT.Expiry, cfg.JWT.Issuer)
 
 	// Initialize business services
-	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc)
+	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
 	paymentSvc := service.NewPaymentService(
 		txRepo,
 		walletRepo,
@@ -85,7 +86,10 @@ func main() {
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
 	webhookRepo := pgStorage.NewWebhookRepository(pool)
-	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log, webhookRepo)
+
+	// WaitGroup for webhook goroutines — used for graceful shutdown
+	var webhookWg sync.WaitGroup
+	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log, &webhookWg, webhookRepo)
 	merchantSvc := service.NewMerchantService(merchantRepo, encSvc)
 	auditRepo := pgStorage.NewAuditRepository(pool)
 	auditSvc := service.NewAuditService(auditRepo, log)
@@ -120,7 +124,9 @@ func main() {
 		HealthCheckers: []ports.HealthChecker{pgHealth, redisHealth},
 		MerchantSvc:    merchantSvc,
 		AuditSvc:       auditSvc,
+		TxRepo:         txRepo,
 		Logger:         log,
+		ServerMode:     cfg.Server.Mode,
 	})
 
 	// HTTP Server with graceful shutdown
@@ -148,11 +154,24 @@ func main() {
 	<-quit
 	log.Info().Msg("Shutting down server...")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error().Err(err).Msg("Server forced to shutdown")
+	}
+
+	// Wait for outstanding webhook deliveries to complete (up to 10s)
+	webhookDone := make(chan struct{})
+	go func() {
+		webhookWg.Wait()
+		close(webhookDone)
+	}()
+	select {
+	case <-webhookDone:
+		log.Info().Msg("All webhook deliveries completed")
+	case <-time.After(10 * time.Second):
+		log.Warn().Msg("Webhook delivery wait timed out, shutting down anyway")
 	}
 
 	log.Info().Msg("Server exited")

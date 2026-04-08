@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"secure-payment-gateway/internal/core/domain"
+	"secure-payment-gateway/internal/core/ports"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -32,6 +33,22 @@ func (r *WalletRepo) Create(ctx context.Context, w *domain.Wallet) error {
 	)
 	if err != nil {
 		return fmt.Errorf("insert wallet: %w", err)
+	}
+	return nil
+}
+
+// CreateTx inserts a new wallet within a database transaction.
+func (r *WalletRepo) CreateTx(ctx context.Context, tx ports.Tx, w *domain.Wallet) error {
+	pgxTx := UnwrapTx(tx)
+	query := `INSERT INTO wallets (id, merchant_id, currency, encrypted_balance, last_audit_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+	_, err := pgxTx.Exec(ctx, query,
+		w.ID, w.MerchantID, w.Currency, w.EncryptedBalance,
+		w.LastAuditHash, w.CreatedAt, w.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert wallet (tx): %w", err)
 	}
 	return nil
 }
@@ -76,12 +93,13 @@ func (r *WalletRepo) GetByMerchantID(ctx context.Context, merchantID uuid.UUID, 
 
 // GetByMerchantIDForUpdate fetches a wallet by merchant ID and currency with pessimistic locking.
 // This MUST be called within a transaction.
-func (r *WalletRepo) GetByMerchantIDForUpdate(ctx context.Context, tx pgx.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
+func (r *WalletRepo) GetByMerchantIDForUpdate(ctx context.Context, tx ports.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
+	pgxTx := UnwrapTx(tx)
 	query := `SELECT id, merchant_id, currency, encrypted_balance, last_audit_hash, created_at, updated_at
 		FROM wallets WHERE merchant_id = $1 AND currency = $2 FOR UPDATE`
 
 	w := &domain.Wallet{}
-	err := tx.QueryRow(ctx, query, merchantID, currency).Scan(
+	err := pgxTx.QueryRow(ctx, query, merchantID, currency).Scan(
 		&w.ID, &w.MerchantID, &w.Currency, &w.EncryptedBalance,
 		&w.LastAuditHash, &w.CreatedAt, &w.UpdatedAt,
 	)
@@ -96,12 +114,13 @@ func (r *WalletRepo) GetByMerchantIDForUpdate(ctx context.Context, tx pgx.Tx, me
 
 // GetByIDForUpdate fetches a wallet by ID with pessimistic locking.
 // This MUST be called within a transaction.
-func (r *WalletRepo) GetByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Wallet, error) {
+func (r *WalletRepo) GetByIDForUpdate(ctx context.Context, tx ports.Tx, id uuid.UUID) (*domain.Wallet, error) {
+	pgxTx := UnwrapTx(tx)
 	query := `SELECT id, merchant_id, currency, encrypted_balance, last_audit_hash, created_at, updated_at
 		FROM wallets WHERE id = $1 FOR UPDATE`
 
 	w := &domain.Wallet{}
-	err := tx.QueryRow(ctx, query, id).Scan(
+	err := pgxTx.QueryRow(ctx, query, id).Scan(
 		&w.ID, &w.MerchantID, &w.Currency, &w.EncryptedBalance,
 		&w.LastAuditHash, &w.CreatedAt, &w.UpdatedAt,
 	)
@@ -115,10 +134,11 @@ func (r *WalletRepo) GetByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UU
 }
 
 // UpdateBalance updates a wallet's encrypted balance within a transaction.
-func (r *WalletRepo) UpdateBalance(ctx context.Context, tx pgx.Tx, walletID uuid.UUID, encryptedBalance string) error {
+func (r *WalletRepo) UpdateBalance(ctx context.Context, tx ports.Tx, walletID uuid.UUID, encryptedBalance string) error {
+	pgxTx := UnwrapTx(tx)
 	query := `UPDATE wallets SET encrypted_balance = $1, updated_at = NOW() WHERE id = $2`
 
-	tag, err := tx.Exec(ctx, query, encryptedBalance, walletID)
+	tag, err := pgxTx.Exec(ctx, query, encryptedBalance, walletID)
 	if err != nil {
 		return fmt.Errorf("update wallet balance: %w", err)
 	}

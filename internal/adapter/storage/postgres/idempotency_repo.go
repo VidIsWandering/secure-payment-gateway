@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"secure-payment-gateway/internal/core/domain"
+	"secure-payment-gateway/internal/core/ports"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -21,11 +22,12 @@ func NewIdempotencyRepo(pool Pool) *IdempotencyRepo {
 }
 
 // Create inserts an idempotency log within a database transaction.
-func (r *IdempotencyRepo) Create(ctx context.Context, tx pgx.Tx, log *domain.IdempotencyLog) error {
+func (r *IdempotencyRepo) Create(ctx context.Context, tx ports.Tx, log *domain.IdempotencyLog) error {
+	pgxTx := UnwrapTx(tx)
 	query := `INSERT INTO idempotency_logs (key, transaction_id, response_json, created_at)
 		VALUES ($1, $2, $3, $4)`
 
-	_, err := tx.Exec(ctx, query, log.Key, log.TransactionID, log.ResponseJSON, log.CreatedAt)
+	_, err := pgxTx.Exec(ctx, query, log.Key, log.TransactionID, log.ResponseJSON, log.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("insert idempotency log: %w", err)
 	}

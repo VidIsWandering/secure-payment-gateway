@@ -28,6 +28,7 @@ WORKDIR /app
 
 COPY --from=builder /app/server .
 COPY --from=builder /app/config/config.yaml ./config/config.yaml
+COPY --from=builder /app/docs/api/openapi.yaml ./docs/api/openapi.yaml
 
 RUN chown -R appuser:appgroup /app
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"secure-payment-gateway/internal/core/domain"
+	"secure-payment-gateway/internal/core/ports"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -33,6 +34,23 @@ func (r *MerchantRepo) Create(ctx context.Context, m *domain.Merchant) error {
 	)
 	if err != nil {
 		return fmt.Errorf("insert merchant: %w", err)
+	}
+	return nil
+}
+
+// CreateTx inserts a new merchant within a database transaction.
+func (r *MerchantRepo) CreateTx(ctx context.Context, tx ports.Tx, m *domain.Merchant) error {
+	pgxTx := UnwrapTx(tx)
+	query := `INSERT INTO merchants (id, username, password_hash, merchant_name, access_key, secret_key_enc, webhook_url, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+
+	_, err := pgxTx.Exec(ctx, query,
+		m.ID, m.Username, m.PasswordHash, m.MerchantName,
+		m.AccessKey, m.SecretKeyEnc, m.WebhookURL, m.Status,
+		m.CreatedAt, m.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert merchant (tx): %w", err)
 	}
 	return nil
 }

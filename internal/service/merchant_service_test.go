@@ -68,9 +68,25 @@ func TestMerchantService_UpdateWebhookURL(t *testing.T) {
 	}, nil)
 	mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-	newURL := "https://new.example.com/hook"
+	// localhost is allowed for development
+	newURL := "http://localhost:9000/hook"
 	err := svc.UpdateWebhookURL(context.Background(), merchantID, &newURL)
 	assert.NoError(t, err)
+}
+
+func TestMerchantService_UpdateWebhookURL_SSRF_Blocked(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockMerchantRepository(ctrl)
+	mockEnc := mocks.NewMockEncryptionService(ctrl)
+	svc := NewMerchantService(mockRepo, mockEnc)
+
+	// Private IP should be blocked
+	privateURL := "https://192.168.1.1/hook"
+	err := svc.UpdateWebhookURL(context.Background(), uuid.New(), &privateURL)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "SSRF blocked")
 }
 
 func TestMerchantService_RotateKeys_Success(t *testing.T) {
