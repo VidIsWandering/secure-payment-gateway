@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Payment Gateway | Enterprise Grade</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    /* Landing page specific styles */
+    .hero {
+      text-align: center;
+      padding: 6rem 1rem 4rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero-title {
+      font-size: 3.5rem;
+      letter-spacing: -1px;
+      margin-bottom: 1.5rem;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: fadeIn 0.8s ease-out forwards;
+    }
+
+    .hero-text {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+      animation: fadeIn 1s ease-out forwards;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      animation: fadeIn 1.2s ease-out forwards;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem 0 5rem;
+    }
+
+    .feature-card {
+      padding: 2rem;
+      transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+      padding: 1rem;
+      background: rgba(88, 166, 255, 0.1);
+      border-radius: var(--radius-md);
+      color: var(--accent-primary);
+    }
+    
+    .feature-title {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .feature-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="navbar container">
+    <div class="navbar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="M9 12l2 2 4-4"></path>
+      </svg>
+      SecurePay
+    </div>
+    <div class="nav-links">
+      <a href="/swagger" class="nav-link">API Docs</a>
+      <a href="/login" class="nav-link">Sign In</a>
+      <a href="/register" class="btn btn-primary">Get Started</a>
+      <a href="/dashboard" class="btn btn-secondary" id="btn-portal" style="display:none">Portal</a>
+    </div>
+  </header>
+
+  <main class="main-content container">
+    <section class="hero">
+      <div class="badge badge-success" style="margin-bottom: 1rem;">v2.0 Enterprise Ready</div>
+      <h1 class="hero-title">The Gateway for Modern Commerce</h1>
+      <p class="hero-text">Process payments securely with HMAC-SHA256 signatures, pessimistic locking, and sub-millisecond Golang performance. Designed exclusively for high-concurrency architectures.</p>
+      <div class="hero-actions">
+        <a href="/register" class="btn btn-primary" style="padding: 0.8rem 2rem; font-size: 1.1rem;">Create Account</a>
+        <a href="/checkout-demo" class="btn btn-secondary" style="padding: 0.8rem 2rem; font-size: 1.1rem;">Try Demo</a>
+      </div>
+    </section>
+
+    <section class="features-grid">
+      <div class="glass-panel feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3 class="feature-title">End-to-End Security</h3>
+        <p class="feature-desc">All transactions are enforced by digital signatures (HMAC-SHA256). Payload tampering and replay attacks are categorically rejected.</p>
+      </div>
+      
+      <div class="glass-panel feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3 class="feature-title">ACID Transactions</h3>
+        <p class="feature-desc">Database operations strictly adhere to Pessimistic Locking (SELECT FOR UPDATE). Zero chance of negative balances, even under heavy multi-threaded stress.</p>
+      </div>
+
+      <div class="glass-panel feature-card">
+        <div class="feature-icon">📡</div>
+        <h3 class="feature-title">Instant Webhooks</h3>
+        <p class="feature-desc">Receive real-time payment notifications back to your platform with built-in SSRF protection and automatic retry policies.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script>
+    if (spgAPI.getToken()) {
+      document.querySelector('a[href="/login"]').style.display = 'none';
+      document.querySelector('a[href="/register"]').style.display = 'none';
+      document.getElementById('btn-portal').style.display = 'inline-flex';
+    }
+  </script>
+</body>
+</html>

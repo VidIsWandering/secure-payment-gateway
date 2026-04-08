@@ -12,6 +12,7 @@ import (
 	"secure-payment-gateway/pkg/apperror"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // AuthServiceImpl implements ports.AuthService.
@@ -21,6 +22,7 @@ type AuthServiceImpl struct {
 	hashSvc      ports.HashService
 	encSvc       ports.EncryptionService
 	tokenSvc     ports.TokenService
+	transactor   ports.DBTransactor
 }
 
 // NewAuthService creates a new AuthServiceImpl.
@@ -30,6 +32,7 @@ func NewAuthService(
 	hashSvc ports.HashService,
 	encSvc ports.EncryptionService,
 	tokenSvc ports.TokenService,
+	transactor ports.DBTransactor,
 ) *AuthServiceImpl {
 	return &AuthServiceImpl{
 		merchantRepo: merchantRepo,
@@ -37,12 +40,20 @@ func NewAuthService(
 		hashSvc:      hashSvc,
 		encSvc:       encSvc,
 		tokenSvc:     tokenSvc,
+		transactor:   transactor,
 	}
 }
 
-// Register creates a new merchant account with a wallet.
+// Register creates a new merchant account with a wallet atomically.
 // Returns the access_key and secret_key (plaintext shown only once).
 func (s *AuthServiceImpl) Register(ctx context.Context, req ports.RegisterRequest) (*ports.RegisterResponse, error) {
+	// SSRF validation for webhook URL
+	if req.WebhookURL != nil && *req.WebhookURL != "" {
+		if err := ValidateWebhookURL(*req.WebhookURL); err != nil {
+			return nil, apperror.Validation(fmt.Sprintf("invalid webhook URL: %v", err))
+		}
+	}
+
 	// Check username uniqueness
 	existing, err := s.merchantRepo.GetByUsername(ctx, req.Username)
 	if err != nil {
@@ -75,6 +86,12 @@ func (s *AuthServiceImpl) Register(ctx context.Context, req ports.RegisterReques
 		return nil, apperror.InternalError(fmt.Errorf("encrypt secret key: %w", err))
 	}
 
+	// Encrypt initial balance (0)
+	encryptedBalance, err := s.encSvc.Encrypt("0")
+	if err != nil {
+		return nil, apperror.InternalError(fmt.Errorf("encrypt initial balance: %w", err))
+	}
+
 	now := time.Now().UTC()
 	merchant := &domain.Merchant{
 		ID:           uuid.New(),
@@ -89,18 +106,6 @@ func (s *AuthServiceImpl) Register(ctx context.Context, req ports.RegisterReques
 		UpdatedAt:    now,
 	}
 
-	// Create merchant
-	if err := s.merchantRepo.Create(ctx, merchant); err != nil {
-		return nil, apperror.InternalError(fmt.Errorf("create merchant: %w", err))
-	}
-
-	// Encrypt initial balance (0)
-	encryptedBalance, err := s.encSvc.Encrypt("0")
-	if err != nil {
-		return nil, apperror.InternalError(fmt.Errorf("encrypt initial balance: %w", err))
-	}
-
-	// Create default wallet
 	wallet := &domain.Wallet{
 		ID:               uuid.New(),
 		MerchantID:       merchant.ID,
@@ -110,8 +115,29 @@ func (s *AuthServiceImpl) Register(ctx context.Context, req ports.RegisterReques
 		UpdatedAt:        now,
 	}
 
-	if err := s.walletRepo.Create(ctx, wallet); err != nil {
+	// Create merchant + wallet atomically in a DB transaction
+	dbTx, err := s.transactor.Begin(ctx)
+	if err != nil {
+		return nil, apperror.InternalError(fmt.Errorf("begin tx: %w", err))
+	}
+	defer func() {
+		if pgxTx, ok := dbTx.(pgx.Tx); ok {
+			pgxTx.Rollback(ctx) //nolint:errcheck
+		}
+	}()
+
+	if err := s.merchantRepo.CreateTx(ctx, dbTx, merchant); err != nil {
+		return nil, apperror.InternalError(fmt.Errorf("create merchant: %w", err))
+	}
+
+	if err := s.walletRepo.CreateTx(ctx, dbTx, wallet); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("create wallet: %w", err))
+	}
+
+	if pgxTx, ok := dbTx.(pgx.Tx); ok {
+		if err := pgxTx.Commit(ctx); err != nil {
+			return nil, apperror.InternalError(fmt.Errorf("commit tx: %w", err))
+		}
 	}
 
 	return &ports.RegisterResponse{

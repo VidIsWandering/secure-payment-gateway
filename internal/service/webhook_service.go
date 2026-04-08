@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"secure-payment-gateway/internal/core/domain"
@@ -58,6 +59,7 @@ type webhookService struct {
 	sigSvc       ports.SignatureService
 	httpClient   HTTPClient
 	log          zerolog.Logger
+	wg           *sync.WaitGroup // tracks outstanding deliveries for graceful shutdown
 }
 
 // HTTPClient interface for testability.
@@ -66,6 +68,7 @@ type HTTPClient interface {
 }
 
 // NewWebhookService creates a new webhook service.
+// The optional WaitGroup is used to track outstanding webhook deliveries for graceful shutdown.
 func NewWebhookService(
 	merchantRepo ports.MerchantRepository,
 	walletRepo ports.WalletRepository,
@@ -73,11 +76,15 @@ func NewWebhookService(
 	sigSvc ports.SignatureService,
 	httpClient HTTPClient,
 	log zerolog.Logger,
+	wg *sync.WaitGroup,
 	webhookRepo ...ports.WebhookRepository,
 ) ports.WebhookService {
 	var repo ports.WebhookRepository
 	if len(webhookRepo) > 0 {
 		repo = webhookRepo[0]
+	}
+	if wg == nil {
+		wg = &sync.WaitGroup{}
 	}
 	return &webhookService{
 		merchantRepo: merchantRepo,
@@ -87,6 +94,7 @@ func NewWebhookService(
 		sigSvc:       sigSvc,
 		httpClient:   httpClient,
 		log:          log,
+		wg:           wg,
 	}
 }
 
@@ -149,8 +157,12 @@ func (s *webhookService) EnqueueWebhook(ctx context.Context, transaction *domain
 		Signature: signature,
 	}
 
-	// Fire async with retries
-	go s.deliverWithRetries(*merchant.WebhookURL, payload, transaction.ID, transaction.MerchantID)
+	// Fire async with retries — tracked by WaitGroup for graceful shutdown
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.deliverWithRetries(*merchant.WebhookURL, payload, transaction.ID, transaction.MerchantID)
+	}()
 
 	return nil
 }

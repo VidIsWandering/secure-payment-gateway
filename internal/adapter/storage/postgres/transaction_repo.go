@@ -25,12 +25,13 @@ func NewTransactionRepo(pool Pool) *TransactionRepo {
 }
 
 // Create inserts a new transaction within a database transaction.
-func (r *TransactionRepo) Create(ctx context.Context, tx pgx.Tx, t *domain.Transaction) error {
+func (r *TransactionRepo) Create(ctx context.Context, tx ports.Tx, t *domain.Transaction) error {
+	pgxTx := UnwrapTx(tx)
 	query := `INSERT INTO transactions (id, reference_id, merchant_id, wallet_id, amount, amount_encrypted,
 		transaction_type, status, signature, client_ip, extra_data, original_transaction_id, created_at, processed_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
-	_, err := tx.Exec(ctx, query,
+	_, err := pgxTx.Exec(ctx, query,
 		t.ID, t.ReferenceID, t.MerchantID, t.WalletID,
 		t.Amount, t.AmountEncrypted, t.TransactionType, t.Status,
 		t.Signature, t.ClientIP, t.ExtraData, t.OriginalTransactionID,
@@ -61,11 +62,12 @@ func (r *TransactionRepo) GetByReference(ctx context.Context, merchantID uuid.UU
 }
 
 // UpdateStatus updates a transaction's status within a database transaction.
-func (r *TransactionRepo) UpdateStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status domain.TransactionStatus) error {
+func (r *TransactionRepo) UpdateStatus(ctx context.Context, tx ports.Tx, id uuid.UUID, status domain.TransactionStatus) error {
+	pgxTx := UnwrapTx(tx)
 	now := time.Now()
 	query := `UPDATE transactions SET status = $1, processed_at = $2 WHERE id = $3`
 
-	tag, err := tx.Exec(ctx, query, status, now, id)
+	tag, err := pgxTx.Exec(ctx, query, status, now, id)
 	if err != nil {
 		return fmt.Errorf("update transaction status: %w", err)
 	}

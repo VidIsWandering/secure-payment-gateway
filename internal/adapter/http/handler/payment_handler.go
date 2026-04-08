@@ -16,11 +16,49 @@ import (
 type PaymentHandler struct {
 	paymentSvc ports.PaymentService
 	webhookSvc ports.WebhookService
+	txRepo     ports.TransactionRepository
 }
 
 // NewPaymentHandler creates a new PaymentHandler.
-func NewPaymentHandler(paymentSvc ports.PaymentService, webhookSvc ports.WebhookService) *PaymentHandler {
-	return &PaymentHandler{paymentSvc: paymentSvc, webhookSvc: webhookSvc}
+func NewPaymentHandler(paymentSvc ports.PaymentService, webhookSvc ports.WebhookService, txRepo ...ports.TransactionRepository) *PaymentHandler {
+	h := &PaymentHandler{paymentSvc: paymentSvc, webhookSvc: webhookSvc}
+	if len(txRepo) > 0 {
+		h.txRepo = txRepo[0]
+	}
+	return h
+}
+
+// GetPaymentStatus handles GET /api/v1/payments/:id/status.
+func (h *PaymentHandler) GetPaymentStatus(c *gin.Context) {
+	merchantID, ok := c.Get(middleware.CtxMerchantID)
+	if !ok {
+		response.Error(c, apperror.ErrInvalidToken())
+		return
+	}
+
+	txIDStr := c.Param("id")
+	txID, err := uuid.Parse(txIDStr)
+	if err != nil {
+		response.Error(c, apperror.Validation("invalid transaction ID format"))
+		return
+	}
+
+	if h.txRepo == nil {
+		response.Error(c, apperror.InternalError(nil))
+		return
+	}
+
+	tx, err := h.txRepo.GetByID(c.Request.Context(), txID)
+	if err != nil {
+		response.Error(c, apperror.InternalError(err))
+		return
+	}
+	if tx == nil || tx.MerchantID != merchantID.(uuid.UUID) {
+		response.Error(c, apperror.ErrNotFound("transaction"))
+		return
+	}
+
+	response.OK(c, toTransactionResponse(tx))
 }
 
 // ProcessPayment handles POST /api/v1/payments.
@@ -43,6 +81,7 @@ func (h *PaymentHandler) ProcessPayment(c *gin.Context) {
 		ReferenceID: req.ReferenceID,
 		Amount:      req.Amount,
 		Currency:    req.Currency,
+		Signature:   c.GetHeader(middleware.HeaderSignature),
 		ClientIP:    c.ClientIP(),
 		ExtraData:   req.ExtraData,
 	})
@@ -79,6 +118,7 @@ func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
 		OriginalReferenceID: req.OriginalReferenceID,
 		Amount:              req.Amount,
 		Reason:              req.Reason,
+		Signature:           c.GetHeader(middleware.HeaderSignature),
 		ClientIP:            c.ClientIP(),
 	})
 	if err != nil {

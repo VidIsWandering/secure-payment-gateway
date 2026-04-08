@@ -14,9 +14,9 @@ import (
 	reflect "reflect"
 	domain "secure-payment-gateway/internal/core/domain"
 	ports "secure-payment-gateway/internal/core/ports"
+	time "time"
 
 	uuid "github.com/google/uuid"
-	pgx "github.com/jackc/pgx/v5"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -56,6 +56,20 @@ func (m *MockMerchantRepository) Create(ctx context.Context, merchant *domain.Me
 func (mr *MockMerchantRepositoryMockRecorder) Create(ctx, merchant any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockMerchantRepository)(nil).Create), ctx, merchant)
+}
+
+// CreateTx mocks base method.
+func (m *MockMerchantRepository) CreateTx(ctx context.Context, tx ports.Tx, merchant *domain.Merchant) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTx", ctx, tx, merchant)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateTx indicates an expected call of CreateTx.
+func (mr *MockMerchantRepositoryMockRecorder) CreateTx(ctx, tx, merchant any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTx", reflect.TypeOf((*MockMerchantRepository)(nil).CreateTx), ctx, tx, merchant)
 }
 
 // GetByAccessKey mocks base method.
@@ -155,6 +169,20 @@ func (mr *MockWalletRepositoryMockRecorder) Create(ctx, wallet any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWalletRepository)(nil).Create), ctx, wallet)
 }
 
+// CreateTx mocks base method.
+func (m *MockWalletRepository) CreateTx(ctx context.Context, tx ports.Tx, wallet *domain.Wallet) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTx", ctx, tx, wallet)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateTx indicates an expected call of CreateTx.
+func (mr *MockWalletRepositoryMockRecorder) CreateTx(ctx, tx, wallet any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTx", reflect.TypeOf((*MockWalletRepository)(nil).CreateTx), ctx, tx, wallet)
+}
+
 // GetByID mocks base method.
 func (m *MockWalletRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Wallet, error) {
 	m.ctrl.T.Helper()
@@ -171,7 +199,7 @@ func (mr *MockWalletRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 }
 
 // GetByIDForUpdate mocks base method.
-func (m *MockWalletRepository) GetByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Wallet, error) {
+func (m *MockWalletRepository) GetByIDForUpdate(ctx context.Context, tx ports.Tx, id uuid.UUID) (*domain.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByIDForUpdate", ctx, tx, id)
 	ret0, _ := ret[0].(*domain.Wallet)
@@ -201,7 +229,7 @@ func (mr *MockWalletRepositoryMockRecorder) GetByMerchantID(ctx, merchantID, cur
 }
 
 // GetByMerchantIDForUpdate mocks base method.
-func (m *MockWalletRepository) GetByMerchantIDForUpdate(ctx context.Context, tx pgx.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
+func (m *MockWalletRepository) GetByMerchantIDForUpdate(ctx context.Context, tx ports.Tx, merchantID uuid.UUID, currency string) (*domain.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByMerchantIDForUpdate", ctx, tx, merchantID, currency)
 	ret0, _ := ret[0].(*domain.Wallet)
@@ -216,7 +244,7 @@ func (mr *MockWalletRepositoryMockRecorder) GetByMerchantIDForUpdate(ctx, tx, me
 }
 
 // UpdateBalance mocks base method.
-func (m *MockWalletRepository) UpdateBalance(ctx context.Context, tx pgx.Tx, walletID uuid.UUID, encryptedBalance string) error {
+func (m *MockWalletRepository) UpdateBalance(ctx context.Context, tx ports.Tx, walletID uuid.UUID, encryptedBalance string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateBalance", ctx, tx, walletID, encryptedBalance)
 	ret0, _ := ret[0].(error)
@@ -269,7 +297,7 @@ func (mr *MockTransactionRepositoryMockRecorder) CheckRefundExists(ctx, original
 }
 
 // Create mocks base method.
-func (m *MockTransactionRepository) Create(ctx context.Context, tx pgx.Tx, transaction *domain.Transaction) error {
+func (m *MockTransactionRepository) Create(ctx context.Context, tx ports.Tx, transaction *domain.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, tx, transaction)
 	ret0, _ := ret[0].(error)
@@ -344,7 +372,7 @@ func (mr *MockTransactionRepositoryMockRecorder) List(ctx, params any) *gomock.C
 }
 
 // UpdateStatus mocks base method.
-func (m *MockTransactionRepository) UpdateStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status domain.TransactionStatus) error {
+func (m *MockTransactionRepository) UpdateStatus(ctx context.Context, tx ports.Tx, id uuid.UUID, status domain.TransactionStatus) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStatus", ctx, tx, id, status)
 	ret0, _ := ret[0].(error)
@@ -382,7 +410,7 @@ func (m *MockIdempotencyRepository) EXPECT() *MockIdempotencyRepositoryMockRecor
 }
 
 // Create mocks base method.
-func (m *MockIdempotencyRepository) Create(ctx context.Context, tx pgx.Tx, log *domain.IdempotencyLog) error {
+func (m *MockIdempotencyRepository) Create(ctx context.Context, tx ports.Tx, log *domain.IdempotencyLog) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, tx, log)
 	ret0, _ := ret[0].(error)
@@ -540,10 +568,10 @@ func (m *MockDBTransactor) EXPECT() *MockDBTransactorMockRecorder {
 }
 
 // Begin mocks base method.
-func (m *MockDBTransactor) Begin(ctx context.Context) (pgx.Tx, error) {
+func (m *MockDBTransactor) Begin(ctx context.Context) (ports.Tx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Begin", ctx)
-	ret0, _ := ret[0].(pgx.Tx)
+	ret0, _ := ret[0].(ports.Tx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -552,4 +580,43 @@ func (m *MockDBTransactor) Begin(ctx context.Context) (pgx.Tx, error) {
 func (mr *MockDBTransactorMockRecorder) Begin(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockDBTransactor)(nil).Begin), ctx)
+}
+
+// MockRateLimitStore is a mock of RateLimitStore interface.
+type MockRateLimitStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockRateLimitStoreMockRecorder
+	isgomock struct{}
+}
+
+// MockRateLimitStoreMockRecorder is the mock recorder for MockRateLimitStore.
+type MockRateLimitStoreMockRecorder struct {
+	mock *MockRateLimitStore
+}
+
+// NewMockRateLimitStore creates a new mock instance.
+func NewMockRateLimitStore(ctrl *gomock.Controller) *MockRateLimitStore {
+	mock := &MockRateLimitStore{ctrl: ctrl}
+	mock.recorder = &MockRateLimitStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRateLimitStore) EXPECT() *MockRateLimitStoreMockRecorder {
+	return m.recorder
+}
+
+// Allow mocks base method.
+func (m *MockRateLimitStore) Allow(ctx context.Context, key string, limit int64, window time.Duration) (*ports.RateLimitResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Allow", ctx, key, limit, window)
+	ret0, _ := ret[0].(*ports.RateLimitResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Allow indicates an expected call of Allow.
+func (mr *MockRateLimitStoreMockRecorder) Allow(ctx, key, limit, window any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allow", reflect.TypeOf((*MockRateLimitStore)(nil).Allow), ctx, key, limit, window)
 }

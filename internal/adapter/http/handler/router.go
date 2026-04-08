@@ -2,10 +2,10 @@ package handler
 
 import (
 	"secure-payment-gateway/internal/adapter/http/middleware"
-	redisStore "secure-payment-gateway/internal/adapter/storage/redis"
 	"secure-payment-gateway/internal/core/ports"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
 
@@ -20,11 +20,13 @@ type RouterDeps struct {
 	SigSvc         ports.SignatureService
 	NonceStore     ports.NonceStore
 	TokenSvc       ports.TokenService
-	RateLimitStore *redisStore.RateLimitStore // nil = rate limiting disabled
+	RateLimitStore ports.RateLimitStore            // nil = rate limiting disabled
 	HealthCheckers []ports.HealthChecker
 	MerchantSvc    ports.MerchantManagementService // nil = merchant management disabled
 	AuditSvc       ports.AuditService              // nil = audit logging disabled
+	TxRepo         ports.TransactionRepository      // nil = payment status disabled
 	Logger         zerolog.Logger
+	ServerMode     string // "debug", "release", "test"
 }
 
 // SetupRouter initialises the Gin engine with all routes and middleware.
@@ -38,6 +40,12 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	r.Use(middleware.RequestLogger(deps.Logger))
 	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB request body limit
 
+	// Prometheus metrics
+	r.Use(middleware.PrometheusMetrics())
+
+	// CORS middleware
+	r.Use(middleware.CORS())
+
 	// Audit logging (after response)
 	if deps.AuditSvc != nil {
 		r.Use(middleware.AuditLog(deps.AuditSvc))
@@ -46,14 +54,20 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	// Health check (deep — verifies PostgreSQL + Redis)
 	r.GET("/health", HealthCheck(deps.HealthCheckers...))
 
-	// Merchant Dashboard UI (serves embedded SPA; handles its own JWT auth client-side)
-	r.GET("/dashboard", DashboardUI)
+	// Prometheus metrics endpoint
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// Swagger documentation
-	swagger := r.Group("/swagger")
-	{
-		swagger.GET("", SwaggerUI)
-		swagger.GET("/spec", SwaggerSpec)
+	// Web UI routes (Full App, Landing, Auth, Dashboard, Checkout Simulator)
+	uiHandler := NewUIHandler(deps.ServerMode)
+	uiHandler.RegisterRoutes(r)
+
+	// Swagger documentation — only in non-release mode
+	if deps.ServerMode != "release" {
+		swagger := r.Group("/swagger")
+		{
+			swagger.GET("", SwaggerUI)
+			swagger.GET("/spec", SwaggerSpec)
+		}
 	}
 
 	// Rate limit rules
@@ -84,7 +98,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 
 	// --- HMAC-authenticated routes (merchant API) ---
 	hmacAuth := middleware.HMACAuth(deps.MerchantRepo, deps.EncSvc, deps.SigSvc, deps.NonceStore, deps.Logger)
-	paymentHandler := NewPaymentHandler(deps.PaymentSvc, deps.WebhookSvc)
+	paymentHandler := NewPaymentHandler(deps.PaymentSvc, deps.WebhookSvc, deps.TxRepo)
 	payments := v1.Group("/payments", hmacAuth)
 	{
 		payments.POST("", rl("payments"), paymentHandler.ProcessPayment)
@@ -95,6 +109,12 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	jwtAuth := middleware.JWTAuth(deps.TokenSvc, deps.Logger)
 	walletHandler := NewWalletHandler(deps.PaymentSvc, deps.ReportingSvc, deps.WebhookSvc)
 	dashboardHandler := NewDashboardHandler(deps.ReportingSvc)
+
+	// Payment status (JWT auth)
+	paymentStatus := v1.Group("/payments", jwtAuth)
+	{
+		paymentStatus.GET("/:id/status", rl("dashboard"), paymentHandler.GetPaymentStatus)
+	}
 
 	wallets := v1.Group("/wallets", jwtAuth)
 	{

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ---- PostgreSQL ----
   postgres:
@@ -13,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./db/migrations/001_init_schema.up.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -47,8 +45,10 @@ services:
     container_name: spg-app
     ports:
       - "8080:8080"
+    volumes:
+      - ./web:/app/web
     environment:
-      SPG_SERVER_MODE: release
+      SPG_SERVER_MODE: debug
       SPG_DATABASE_HOST: postgres
       SPG_DATABASE_PORT: "5432"
       SPG_DATABASE_USER: postgres
@@ -70,9 +70,47 @@ services:
       - spg-network
     restart: unless-stopped
 
+  # ---- Prometheus (Monitoring) ----
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: spg-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    depends_on:
+      - app
+    networks:
+      - spg-network
+
+  # ---- Grafana (Dashboard) ----
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: spg-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/payment-gateway.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - spg-network
+
 volumes:
   pg_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   spg-network:

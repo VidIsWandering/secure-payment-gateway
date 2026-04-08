@@ -71,6 +71,27 @@ type LogConfig struct {
 	Pretty bool   `mapstructure:"pretty"` // human-readable output (dev only)
 }
 
+// Validate checks required configuration fields.
+func (cfg *Config) Validate() error {
+	if len(cfg.JWT.Secret) < 32 {
+		return fmt.Errorf("SPG_JWT_SECRET must be at least 32 characters (got %d)", len(cfg.JWT.Secret))
+	}
+	if len(cfg.AES.Key) != 64 {
+		return fmt.Errorf("SPG_AES_KEY must be exactly 64 hex characters (32 bytes AES-256 key), got %d", len(cfg.AES.Key))
+	}
+	validModes := map[string]bool{"debug": true, "release": true, "test": true}
+	if !validModes[cfg.Server.Mode] {
+		return fmt.Errorf("SPG_SERVER_MODE must be one of: debug, release, test (got %q)", cfg.Server.Mode)
+	}
+	if cfg.Server.Port < 1 || cfg.Server.Port > 65535 {
+		return fmt.Errorf("SPG_SERVER_PORT must be between 1 and 65535 (got %d)", cfg.Server.Port)
+	}
+	if cfg.Database.MaxConns < 1 {
+		return fmt.Errorf("SPG_DATABASE_MAX_CONNS must be >= 1 (got %d)", cfg.Database.MaxConns)
+	}
+	return nil
+}
+
 // Load reads configuration from file and environment variables.
 // Environment variables override file values. Prefix: SPG_ (Secure Payment Gateway).
 // Nested keys use underscore: SPG_DATABASE_HOST, SPG_JWT_SECRET, etc.
@@ -126,6 +147,11 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
+	}
+
+	// Validate required fields
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config validation: %w", err)
 	}
 
 	return &cfg, nil

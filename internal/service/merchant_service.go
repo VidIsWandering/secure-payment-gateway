@@ -49,6 +49,13 @@ func (s *merchantService) GetProfile(ctx context.Context, merchantID uuid.UUID) 
 }
 
 func (s *merchantService) UpdateWebhookURL(ctx context.Context, merchantID uuid.UUID, webhookURL *string) error {
+	// SSRF validation
+	if webhookURL != nil {
+		if err := ValidateWebhookURL(*webhookURL); err != nil {
+			return apperror.Validation(fmt.Sprintf("invalid webhook URL: %v", err))
+		}
+	}
+
 	merchant, err := s.merchantRepo.GetByID(ctx, merchantID)
 	if err != nil {
 		return apperror.InternalError(err)

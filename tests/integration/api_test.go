@@ -61,7 +61,7 @@ func newTestApp(t *testing.T) *testApp {
 	transactor := newInMemoryTransactor()
 
 	// Business services
-	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc)
+	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
 	log := logger.New("debug", false)
 	paymentSvc := service.NewPaymentService(txRepo, walletRepo, idempotencyRepo, idempotencyCache, encSvc, transactor, log)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)

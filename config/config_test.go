@@ -10,21 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testJWTSecret = "this-is-a-test-jwt-secret-key-32chars"
+	testAESKey    = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+)
+
 func TestLoad_Defaults(t *testing.T) {
-	// Unset any SPG_* env vars injected by CI so that pure defaults are tested.
-	// t.Setenv("") would set to empty string, which viper still treats as an override;
-	// os.Unsetenv removes the variable entirely, restoring via t.Cleanup.
 	unsetSPGEnvVars(t)
 
-	// When no config file and no env vars, defaults should apply.
-	cfg, err := Load("/non/existent/path/config.yaml")
-	// File not found is OK — we fall back to defaults.
-	// But viper returns error for explicit path that doesn't exist.
-	// So we test with empty path to use search paths.
-	_ = cfg
-	_ = err
+	// Set required secrets so validation passes
+	t.Setenv("SPG_JWT_SECRET", testJWTSecret)
+	t.Setenv("SPG_AES_KEY", testAESKey)
 
-	cfg, err = Load("")
+	cfg, err := Load("")
 	require.NoError(t, err)
 
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
@@ -51,10 +49,8 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_FromYAMLFile(t *testing.T) {
-	// Unset any SPG_* env vars injected by CI so that only the YAML file values are tested.
 	unsetSPGEnvVars(t)
 
-	// Create a temporary YAML config.
 	content := []byte(`
 server:
   host: "127.0.0.1"
@@ -73,7 +69,7 @@ redis:
   password: "redispwd"
   db: 2
 jwt:
-  secret: "my-jwt-secret"
+  secret: "yaml-jwt-secret-key-at-least-32chars!!"
   expiry: "12h"
   issuer: "test-gateway"
 aes:
@@ -105,7 +101,7 @@ log:
 	assert.Equal(t, "redispwd", cfg.Redis.Password)
 	assert.Equal(t, 2, cfg.Redis.DB)
 
-	assert.Equal(t, "my-jwt-secret", cfg.JWT.Secret)
+	assert.Equal(t, "yaml-jwt-secret-key-at-least-32chars!!", cfg.JWT.Secret)
 	assert.Equal(t, 12*time.Hour, cfg.JWT.Expiry)
 	assert.Equal(t, "test-gateway", cfg.JWT.Issuer)
 
@@ -115,17 +111,47 @@ log:
 }
 
 func TestLoad_EnvOverride(t *testing.T) {
-	// Environment variables should override defaults.
 	t.Setenv("SPG_SERVER_PORT", "3000")
 	t.Setenv("SPG_DATABASE_HOST", "env-db-host")
-	t.Setenv("SPG_JWT_SECRET", "env-secret")
+	t.Setenv("SPG_JWT_SECRET", testJWTSecret)
+	t.Setenv("SPG_AES_KEY", testAESKey)
 
 	cfg, err := Load("")
 	require.NoError(t, err)
 
 	assert.Equal(t, 3000, cfg.Server.Port)
 	assert.Equal(t, "env-db-host", cfg.Database.Host)
-	assert.Equal(t, "env-secret", cfg.JWT.Secret)
+	assert.Equal(t, testJWTSecret, cfg.JWT.Secret)
+}
+
+func TestLoad_Validation_MissingJWTSecret(t *testing.T) {
+	unsetSPGEnvVars(t)
+	t.Setenv("SPG_AES_KEY", testAESKey)
+	// No JWT_SECRET set, default is empty
+
+	// Load from temp dir so no config.yaml is found
+	tmpDir := t.TempDir()
+	tmpCfg := filepath.Join(tmpDir, "config.yaml")
+	_ = os.WriteFile(tmpCfg, []byte("{}\n"), 0600)
+
+	_, err := Load(tmpCfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "SPG_JWT_SECRET")
+}
+
+func TestLoad_Validation_MissingAESKey(t *testing.T) {
+	unsetSPGEnvVars(t)
+	t.Setenv("SPG_JWT_SECRET", testJWTSecret)
+	// No AES_KEY set, default is empty
+
+	// Load from temp dir so no config.yaml is found
+	tmpDir := t.TempDir()
+	tmpCfg := filepath.Join(tmpDir, "config.yaml")
+	_ = os.WriteFile(tmpCfg, []byte("{}\n"), 0600)
+
+	_, err := Load(tmpCfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "SPG_AES_KEY")
 }
 
 func TestDatabaseConfig_DSN(t *testing.T) {
@@ -151,9 +177,7 @@ func TestRedisConfig_Addr(t *testing.T) {
 	assert.Equal(t, "redis.local:6380", redisCfg.Addr())
 }
 
-// unsetSPGEnvVars removes all SPG_* environment variables that CI injects for
-// integration-test services. It registers a t.Cleanup to restore each variable
-// to its original value once the test finishes, so sibling tests are unaffected.
+// unsetSPGEnvVars removes all SPG_* environment variables that CI injects.
 func unsetSPGEnvVars(t *testing.T) {
 	t.Helper()
 	keys := []string{
@@ -162,6 +186,7 @@ func unsetSPGEnvVars(t *testing.T) {
 		"SPG_REDIS_HOST", "SPG_REDIS_PORT", "SPG_REDIS_PASSWORD", "SPG_REDIS_DB",
 		"SPG_SERVER_HOST", "SPG_SERVER_PORT", "SPG_SERVER_MODE",
 		"SPG_JWT_SECRET", "SPG_JWT_EXPIRY", "SPG_JWT_ISSUER",
+		"SPG_AES_KEY",
 	}
 	for _, key := range keys {
 		original, existed := os.LookupEnv(key)

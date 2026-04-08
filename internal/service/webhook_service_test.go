@@ -50,7 +50,7 @@ func TestWebhookService_EnqueueWebhook_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger())
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil)
 
 	merchantID := uuid.New()
 	walletID := uuid.New()
@@ -107,7 +107,7 @@ func TestWebhookService_EnqueueWebhook_NoWebhookURL(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger())
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil)
 
 	merchantID := uuid.New()
 	mockMerchantRepo.EXPECT().GetByID(gomock.Any(), merchantID).Return(&domain.Merchant{
@@ -141,7 +141,7 @@ func TestWebhookService_EnqueueWebhook_MerchantNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger())
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil)
 
 	merchantID := uuid.New()
 	mockMerchantRepo.EXPECT().GetByID(gomock.Any(), merchantID).Return(nil, errors.New("db error"))
@@ -171,7 +171,7 @@ func TestWebhookService_EnqueueWebhook_DecryptError(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger())
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil)
 
 	merchantID := uuid.New()
 	walletID := uuid.New()
@@ -222,7 +222,7 @@ func TestWebhookService_EventType_Refund(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger())
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil)
 
 	merchantID := uuid.New()
 	walletID := uuid.New()
@@ -282,7 +282,7 @@ func TestWebhookService_PersistsDeliveryLog(t *testing.T) {
 		},
 	}
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), mockWebhookRepo)
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil, mockWebhookRepo)
 
 	merchantID := uuid.New()
 	walletID := uuid.New()
@@ -360,7 +360,7 @@ func TestWebhookService_PersistsFailedDelivery(t *testing.T) {
 	webhookRetryIntervals = []time.Duration{1 * time.Millisecond}
 	defer func() { webhookRetryIntervals = orig }()
 
-	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), mockWebhookRepo)
+	svc := NewWebhookService(mockMerchantRepo, mockWalletRepo, mockEncSvc, mockSigSvc, httpClient, newTestLogger(), nil, mockWebhookRepo)
 
 	merchantID := uuid.New()
 	walletID := uuid.New()

@@ -12,6 +12,7 @@ A production-ready payment gateway API built in Go following Clean Architecture 
 -   **Rate Limiting** — Redis-backed sliding-window rate limiter per merchant
 -   **Audit Logging** — Automatic audit trail for all write operations
 -   **Reporting Dashboard** — Revenue summaries, success rates, and transaction history
+-   **Observability** — Built-in Prometheus metrics and Grafana dashboard for monitoring requests, payments, and webhooks
 -   **Swagger UI** — Built-in API documentation at `/swagger`
 -   **Health Checks** — Deep health check endpoint with per-dependency status (PostgreSQL, Redis)
 -   **Input Sanitization** — XSS protection, strict input validation, request body size limit
@@ -89,6 +90,7 @@ docs/api/             → OpenAPI spec, webhook spec, error codes
 | Testing       | testify, gomock, pgxmock, miniredis |
 | CI/CD         | GitHub Actions                      |
 | Container     | Docker (multi-stage build)          |
+| Observability | Prometheus & Grafana                |
 
 ## Quick Start
 
@@ -101,12 +103,14 @@ docs/api/             → OpenAPI spec, webhook spec, error codes
 ### Run with Docker Compose
 
 ```bash
-# Start all services (PostgreSQL, Redis, App)
+# Start all services (PostgreSQL, Redis, App, Prometheus, Grafana)
 docker compose up -d
 
 # The API is available at http://localhost:8080
 # Swagger UI at http://localhost:8080/swagger
 # Health check at http://localhost:8080/health
+# Prometheus metrics at http://localhost:8080/metrics 
+# Grafana Dashboard at http://localhost:3000 (admin / admin)
 ```
 
 ### Run Locally

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout API Demo | Secure Payment Gateway</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    .layout-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+    
+    @media(max-width: 900px) {
+      .layout-split { grid-template-columns: 1fr; }
+    }
+
+    .demo-card { padding: 2rem; }
+
+    .terminal-window {
+      background: #010409;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .terminal-header {
+      background: #161b22;
+      padding: 0.5rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .term-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+    }
+    .terminal-body {
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: #e6edf3;
+      height: 480px;
+      overflow-y: auto;
+    }
+
+    .log-line { margin-bottom: 0.5rem; opacity: 0; animation: fadeIn 0.3s forwards; }
+    .log-info { color: #58a6ff; }
+    .log-warn { color: #d29922; }
+    .log-success { color: #3fb950; }
+    .log-error { color: #f85149; }
+
+    .price-display {
+      font-size: 3rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--accent-primary);
+    }
+
+    /* Checkout simulated animation */
+    .generating-overlay {
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 1rem; margin-top: 1rem;
+      background: rgba(47, 129, 247, 0.1);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(47, 129, 247, 0.3);
+      color: #58a6ff; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="navbar container">
+    <a href="/" class="navbar-brand">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      SecurePay API Demo
+    </a>
+    <a href="/dashboard" class="nav-link">Back to Dashboard</a>
+  </header>
+
+  <main class="main-content container">
+    <div style="margin-bottom: 3rem; text-align: center;">
+      <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Interactive HMAC Sandbox</h1>
+      <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">Simulate a real-world checkout. Fill in your Access Key and Secret Key, enter an amount, and watch the system generate the HMAC-SHA256 signature live before calling the Gateway.</p>
+    </div>
+
+    <div class="layout-split">
+      <!-- MOCK CHECKOUT UI -->
+      <div class="glass-panel demo-card">
+        <h3 style="margin-bottom: 1.5rem; text-align: center; color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">Simulated Merchant Server</h3>
+        
+        <div class="form-group">
+          <label class="form-label">Merchant Access Key</label>
+          <input type="text" id="demo-ak" class="form-control" placeholder="ak_xxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Merchant Secret Key</label>
+          <input type="password" id="demo-sk" class="form-control" placeholder="sk_xxxxxxxxxx">
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+        <div class="form-group">
+          <label class="form-label" style="text-align: center;">Customer wants to pay:</label>
+          <input type="number" id="pay-amount" class="form-control" value="25000" style="font-size: 2rem; text-align: center; height: auto;" step="1000">
+        </div>
+
+        <button class="btn btn-primary" id="btn-simulate" style="width: 100%; font-size: 1.1rem; padding: 1rem;">Process Sandbox Payment</button>
+
+        <div id="loading-overlay" class="generating-overlay">
+           <span class="spinner" style="margin-right: 0.5rem;"></span> Generating Signature...
+        </div>
+      </div>
+
+      <!-- TERMINAL OUTPUT -->
+      <div class="terminal-window">
+        <div class="terminal-header">
+          <div class="term-dot" style="background:#ff5f56;"></div>
+          <div class="term-dot" style="background:#ffbd2e;"></div>
+          <div class="term-dot" style="background:#27c93f;"></div>
+        </div>
+        <div class="terminal-body" id="term-out">
+          <div class="log-line">Secure Payment Gateway Sandbox Initialized.</div>
+          <div class="log-line" style="color:var(--text-muted)">Waiting to intercept API interactions...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const term = document.getElementById('term-out');
+
+    function appendLog(text, level='info') {
+      const el = document.createElement('div');
+      el.className = `log-line log-${level}`;
+      el.innerText = `[${new Date().toISOString().split('T')[1].slice(0,-1)}] ${text}`;
+      term.appendChild(el);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    // HMAC SHA 256 using Web Crypto API
+    async function generateHMAC(secretKey, canonicalStr) {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(secretKey);
+      
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      
+      const signatureBuffer = await crypto.subtle.sign(
+        'HMAC', cryptoKey, encoder.encode(canonicalStr)
+      );
+
+      // Convert ArrayBuffer to Hex String
+      const hashArray = Array.from(new Uint8Array(signatureBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    }
+
+    document.getElementById('btn-simulate').addEventListener('click', async () => {
+      term.innerHTML = ''; // clear
+      
+      const ak = document.getElementById('demo-ak').value.trim();
+      const sk = document.getElementById('demo-sk').value.trim();
+      const amt = parseInt(document.getElementById('pay-amount').value, 10);
+
+      if (!ak || !sk) {
+        appendLog("Validation Error: Access Key and Secret Key are required.", "error"); return;
+      }
+
+      appendLog("Initiating Payment Process...");
+      document.getElementById('btn-simulate').style.display = 'none';
+      document.getElementById('loading-overlay').style.display = 'flex';
+
+      try {
+        // Prepare Payload
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const nonce = crypto.randomUUID();
+        const endpoint = "/api/v1/payments";
+        
+        const payload = {
+          reference_id: `DEMO-ORD-${Date.now()}`,
+          amount: amt,
+          currency: "VND"
+        };
+        
+        // Exact JSON format matching the backend requirement (no spaces)
+        const payloadStr = JSON.stringify(payload);
+        
+        appendLog(`Payload Prepared: ${payloadStr}`);
+        appendLog(`Generated Nonce: ${nonce}`, "warn");
+        appendLog(`Generated Timestamp: ${timestamp}`, "warn");
+
+        await new Promise(r => setTimeout(r, 600)); // Dramatic pause
+
+        // Construct Canonical String
+        const canonical = `POST|${endpoint}|${timestamp}|${nonce}|${payloadStr}`;
+        appendLog(`Constructed Canonical String:\n${canonical}`, "info");
+
+        await new Promise(r => setTimeout(r, 600));
+
+        // Sign
+        appendLog("Signing payload with HMAC-SHA256 Secret Key...", "warn");
+        const signature = await generateHMAC(sk, canonical);
+        appendLog(`Resulting Signature (X-Signature): ${signature}`, "success");
+
+        await new Promise(r => setTimeout(r, 800));
+
+        appendLog("Dispatching HTTP POST to https://api.secure-payment-gateway.com/api/v1/payments");
+
+        // Fire Request
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Merchant-Access-Key': ak,
+            'X-Timestamp': timestamp,
+            'X-Nonce': nonce,
+            'X-Signature': signature
+          },
+          body: payloadStr
+        });
+
+        const resData = await response.json();
+        
+        if (response.ok) {
+           appendLog(`✅ HTTP 201 Created`, "success");
+           appendLog(`Server Response:\n${JSON.stringify(resData.data, null, 2)}`);
+        } else {
+           appendLog(`❌ HTTP ${response.status} Failed`, "error");
+           appendLog(`Server Response:\n${JSON.stringify(resData, null, 2)}`, "error");
+        }
+
+      } catch (e) {
+        appendLog(`Critical Error: ${e.message}`, "error");
+      } finally {
+        document.getElementById('btn-simulate').style.display = 'block';
+        document.getElementById('loading-overlay').style.display = 'none';
+      }
+    });
+
+  </script>
+</body>
+</html>

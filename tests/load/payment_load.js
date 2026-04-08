@@ -84,9 +84,9 @@ export function processPayment() {
 
   const res = http.post(`${BASE_URL}/payments`, reqBody, { headers });
 
-  // 200 OK, 402 Insufficient Funds (Wallet empty), 400 Bad Request (Idempotency limits)
+  // 201 Created, 402 Insufficient Funds (Wallet empty), 400 Bad Request
   check(res, {
-    'status is 200 or 402': (r) => r.status === 200 || r.status === 402,
+    'status is 201 or 402': (r) => r.status === 201 || r.status === 402,
   });
 
   sleep(Math.random() * 0.5); // Random think time
@@ -107,6 +107,6 @@ export function processPaymentRateLimit() {
 
   // During this scenario, we expect to hit 429 Too Many Requests eventually
   check(res, {
-    'status handled (200, 402, 429)': (r) => [200, 402, 429].includes(r.status),
+    'status handled (201, 402, 429)': (r) => [201, 402, 429].includes(r.status),
   });
 }
