@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: payment_gateway
     ports:
-      - "5432:5432"
+      - "5435:5435"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/migrations/001_init_schema.up.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
@@ -61,11 +61,16 @@ services:
       SPG_AES_KEY: "${AES_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
       SPG_LOG_LEVEL: info
       SPG_LOG_PRETTY: "false"
+      # Rate limit override for payment endpoint (default: 100/min).
+      # Set higher for load testing; comment out or set to 0 for production defaults.
+      SPG_RATELIMIT_PAYMENTS: "${SPG_RATELIMIT_PAYMENTS:-0}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - spg-network
     restart: unless-stopped
@@ -92,7 +97,7 @@ services:
     image: grafana/grafana:11.1.0
     container_name: spg-grafana
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin

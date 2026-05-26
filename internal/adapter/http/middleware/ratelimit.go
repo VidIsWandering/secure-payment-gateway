@@ -31,6 +31,19 @@ func DefaultRateLimitRules() map[string]RateLimitRule {
 	}
 }
 
+// NewRateLimitRules returns rate limit rules with optional config overrides.
+// Zero values use the built-in defaults; positive values override.
+func NewRateLimitRules(paymentsOverride, refundOverride int64) map[string]RateLimitRule {
+	rules := DefaultRateLimitRules()
+	if paymentsOverride > 0 {
+		rules["payments"] = RateLimitRule{Limit: paymentsOverride, Window: time.Minute}
+	}
+	if refundOverride > 0 {
+		rules["payments_refund"] = RateLimitRule{Limit: refundOverride, Window: time.Minute}
+	}
+	return rules
+}
+
 // RateLimiter creates a rate-limiting middleware for a given endpoint group.
 func RateLimiter(store ports.RateLimitStore, group string, rule RateLimitRule, log zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -27,9 +27,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"status": "received"}).encode())
 
 def run(server_class=HTTPServer, handler_class=WebhookHandler, port=9000):
-    server_address = ('', port)
+    # Bind on 0.0.0.0 to accept connections from Docker containers via host.docker.internal
+    server_address = ('0.0.0.0', port)
     httpd = server_class(server_address, handler_class)
-    print(f"Bắt đầu lắng nghe Webhook tại http://localhost:{port}/webhook ...")
+    print(f"Bắt đầu lắng nghe Webhook tại http://0.0.0.0:{port}/webhook ...")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

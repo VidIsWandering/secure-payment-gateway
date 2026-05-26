@@ -42,7 +42,7 @@ def main():
         "username": username,
         "password": password,
         "merchant_name": "Demo Merchant Inc.",
-        "webhook_url": "http://localhost:9000/webhook" # localhost is valid for dev mode
+        "webhook_url": "http://host.docker.internal:9000/webhook" # host.docker.internal resolves to the host machine from inside Docker
     }
     
     resp = requests.post(f"{BASE_URL}/auth/register", json=register_payload)

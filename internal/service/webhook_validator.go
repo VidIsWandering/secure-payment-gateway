@@ -62,7 +62,7 @@ func ValidateWebhookURL(rawURL string) error {
 
 // isLocalhostDev returns true for development-only hostnames.
 func isLocalhostDev(hostname string) bool {
-	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
+	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || hostname == "host.docker.internal"
 }
 
 // isPrivateIP checks if an IP is in a private, loopback, or link-local range.
