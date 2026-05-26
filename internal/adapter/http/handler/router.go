@@ -27,6 +27,8 @@ type RouterDeps struct {
 	TxRepo         ports.TransactionRepository      // nil = payment status disabled
 	Logger         zerolog.Logger
 	ServerMode     string // "debug", "release", "test"
+	RateLimitPayments      int64 // 0 = use default (100/min)
+	RateLimitPaymentsRefund int64 // 0 = use default (30/min)
 }
 
 // SetupRouter initialises the Gin engine with all routes and middleware.
@@ -70,8 +72,8 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 		}
 	}
 
-	// Rate limit rules
-	rules := middleware.DefaultRateLimitRules()
+	// Rate limit rules (with optional config overrides)
+	rules := middleware.NewRateLimitRules(deps.RateLimitPayments, deps.RateLimitPaymentsRefund)
 
 	// Helper: return rate limiter middleware if store is available, else noop.
 	rl := func(group string) gin.HandlerFunc {

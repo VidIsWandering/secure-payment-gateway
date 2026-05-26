@@ -127,6 +127,8 @@ func main() {
 		TxRepo:         txRepo,
 		Logger:         log,
 		ServerMode:     cfg.Server.Mode,
+		RateLimitPayments:       cfg.RateLimit.Payments,
+		RateLimitPaymentsRefund: cfg.RateLimit.PaymentsRefund,
 	})
 
 	// HTTP Server with graceful shutdown

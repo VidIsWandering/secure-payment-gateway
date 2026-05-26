@@ -10,12 +10,13 @@ import (
 
 // Config holds all application configuration.
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	AES      AESConfig      `mapstructure:"aes"`
-	Log      LogConfig      `mapstructure:"log"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	AES       AESConfig       `mapstructure:"aes"`
+	Log       LogConfig       `mapstructure:"log"`
+	RateLimit RateLimitConfig `mapstructure:"ratelimit"`
 }
 
 type ServerConfig struct {
@@ -71,6 +72,13 @@ type LogConfig struct {
 	Pretty bool   `mapstructure:"pretty"` // human-readable output (dev only)
 }
 
+// RateLimitConfig allows overriding default rate limits via environment.
+// Use SPG_RATELIMIT_PAYMENTS etc. Set to 0 to use built-in defaults.
+type RateLimitConfig struct {
+	Payments      int64 `mapstructure:"payments"`       // req/min for POST /payments (default: 100)
+	PaymentsRefund int64 `mapstructure:"payments_refund"` // req/min for POST /payments/refund (default: 30)
+}
+
 // Validate checks required configuration fields.
 func (cfg *Config) Validate() error {
 	if len(cfg.JWT.Secret) < 32 {
@@ -121,6 +129,8 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("aes.key", "")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.pretty", false)
+	v.SetDefault("ratelimit.payments", 0)       // 0 = use built-in default (100/min)
+	v.SetDefault("ratelimit.payments_refund", 0) // 0 = use built-in default (30/min)
 
 	// File config
 	if path != "" {

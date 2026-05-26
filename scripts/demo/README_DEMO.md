@@ -37,6 +37,8 @@ The system exposes several distinct interfaces for operation and monitoring:
 *   It generates an HMAC-SHA256 digital signature dynamically using the `secret_key` and initiates a simulated payment.
 *   The Webhook Server terminal will immediately log an incoming HTTP POST request containing the `SUCCESS` status of the transaction, validating the callback functionality.
 
+> **Note (Docker Networking):** The application runs inside a Docker container. The webhook URL uses `host.docker.internal` to route callbacks from the container to the host machine where `demo_webhook_server.py` is running. This is automatically configured via `extra_hosts` in `docker-compose.yml`.
+
 ---
 
 ## 3. Advanced Security & Edge Cases
@@ -83,19 +85,47 @@ python3 scripts/demo/demo_concurrency.py
 
 **Execution Steps:**
 
-Execute the predefined load test configuration:
-```bash
-# Provide valid credentials before executing 
-export ACCESS_KEY="your-merchant-access-key"
-export SECRET_KEY="your-merchant-secret-key"
-export BASE_URL="http://localhost:8080/api/v1"
+1.  **Run the automated setup script** to create a test merchant with a pre-funded wallet:
+    ```bash
+    python3 scripts/demo/setup_loadtest.py
+    ```
+    The script registers a merchant, funds 500M VND, verifies HMAC auth, and prints the next steps.
 
-k6 run tests/load/payment_load.js
-```
+2.  **Raise the payment rate limit** for stress/spike testing (phases 1 & 2 need higher throughput):
+    ```bash
+    SPG_RATELIMIT_PAYMENTS=50000 docker compose up -d app
+    ```
+    > This overrides the default 100 req/min payment rate limit so the stress test can measure actual DB locking throughput instead of being dominated by HTTP 429 responses.
 
-**Observation Details:**
-*   **Test Stages:** The script runs through three automated phases:
-    1.  *Stress Test:* Ramps up to 200 concurrent users to verify sustained lock throughput.
-    2.  *Spike Test:* Simulates sudden 500-user traffic bursts (e.g., Flash Sale scenarios).
-    3.  *Rate Limiting Check:* Intentionally surpasses the sliding-window limits to guarantee HTTP `429 Too Many Requests` defense mechanisms function properly.
-*   **Grafana Telemetry:** While the k6 script executes, viewing the Grafana Dashboard (`http://localhost:3000`) provides real-time visualization of the HTTP Latency (ms), TPS (Transactions Per Second), and Error rate behaviors as the system defends against the traffic burst.
+3.  **Export credentials and run the load test:**
+    ```bash
+    # Paste the export commands printed by setup_loadtest.py:
+    export ACCESS_KEY="<printed-value>"
+    export SECRET_KEY="<printed-value>"
+    export BASE_URL="http://localhost:8080/api/v1"
+
+    k6 run tests/load/payment_load.js
+    ```
+
+4.  **Restore default rate limits** after testing:
+    ```bash
+    docker compose up -d app
+    ```
+
+**Test Phases:**
+
+| Phase | Scenario | VUs | Duration | What It Tests |
+|-------|----------|-----|----------|---------------|
+| 1 | Stress Test | 0→50 | ~1m45s | Sustained DB locking throughput under concurrent load |
+| 2 | Spike Test | 5→150 | ~50s | System resilience under sudden traffic bursts (Flash Sale) |
+| 3 | Rate Limit | 200 req/min | 1m | HTTP 429 defense mechanism with default rate limits |
+
+**Custom Metrics to Observe:**
+*   `payment_success` — Successful payments (HTTP 201)
+*   `payment_denied` — Insufficient funds (HTTP 402, expected when wallet runs dry)
+*   `payment_rate_limited` — Rate-limited requests (HTTP 429)
+*   `payment_errors` — Unexpected errors (5xx, etc.)
+*   `payment_success_rate` — Ratio of successful business outcomes (201 + 402) vs errors
+*   `payment_latency_ms` — Transaction processing time
+
+**Grafana Telemetry:** While the k6 script executes, view the Grafana Dashboard (`http://localhost:3000`) for real-time visualization of HTTP Latency (ms), TPS (Transactions Per Second), and Error rate behaviors.
