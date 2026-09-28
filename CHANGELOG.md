@@ -11,6 +11,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Lost webhooks**: a crash or restart after a payment committed but before its in-process delivery finished dropped the webhook; the outbox persists it atomically with the payment.
 
 ### Security
+- **SSRF via local webhook targets**: `localhost`, `127.0.0.1`, `::1` and `host.docker.internal` (and plain `http://` to them) were accepted as webhook URLs in every mode, including `release`. They are now accepted only outside `release` mode.
+- **SSRF at delivery time**: the webhook HTTP client now refuses to connect to non-public addresses (checked on the resolved IP, so DNS rebinding cannot bypass URL validation), ignores proxies and does not follow redirects.
+- **Broader reserved-address blocking**: `0.0.0.0/8` (reaches localhost on Linux), CGNAT `100.64.0.0/10`, multicast and other reserved ranges are rejected in addition to RFC 1918, loopback and link-local.
+- **CORS** no longer sends `Access-Control-Allow-Credentials: true` for arbitrary origins; the API authenticates with headers, not cookies.
 - **Replay protection fails closed**: if the Redis nonce store is unavailable, signed requests are rejected with `503 SYS_004` instead of being accepted without replay protection. Opt out with `SPG_SECURITY_NONCE_FAIL_OPEN=true`.
 
 ### Added
@@ -20,6 +24,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release pipeline**: publishing a GitHub release builds and pushes a multi-arch (amd64/arm64) image to `ghcr.io/vidiswandering/secure-payment-gateway` with SBOM and build-provenance attestation.
 
 ### Removed
+- The unused `RequestTimeout` middleware: it was never registered, raced on the Gin context and reused error code `SYS_004`. Server-level read/write timeouts remain in place.
 - `db/schema.sql`, which had drifted from the migrations (it still used `DECIMAL` amounts and lacked unique constraints). `db/migrations/` is the single source of truth.
 - The PostgreSQL `docker-entrypoint-initdb.d` mount in docker-compose; the API now creates the schema.
 

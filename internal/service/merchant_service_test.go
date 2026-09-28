@@ -20,7 +20,7 @@ func TestMerchantService_GetProfile_Success(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, false)
 
 	merchantID := uuid.New()
 	webhookURL := "https://example.com/webhook"
@@ -46,7 +46,7 @@ func TestMerchantService_GetProfile_NotFound(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, false)
 
 	mockRepo.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, nil)
 
@@ -60,7 +60,7 @@ func TestMerchantService_UpdateWebhookURL(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, true) // development mode
 
 	merchantID := uuid.New()
 	mockRepo.EXPECT().GetByID(gomock.Any(), merchantID).Return(&domain.Merchant{
@@ -68,7 +68,7 @@ func TestMerchantService_UpdateWebhookURL(t *testing.T) {
 	}, nil)
 	mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-	// localhost is allowed for development
+	// localhost is allowed in development mode only
 	newURL := "http://localhost:9000/hook"
 	err := svc.UpdateWebhookURL(context.Background(), merchantID, &newURL)
 	assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestMerchantService_UpdateWebhookURL_SSRF_Blocked(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, false)
 
 	// Private IP should be blocked
 	privateURL := "https://192.168.1.1/hook"
@@ -95,7 +95,7 @@ func TestMerchantService_RotateKeys_Success(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, false)
 
 	merchantID := uuid.New()
 	mockRepo.EXPECT().GetByID(gomock.Any(), merchantID).Return(&domain.Merchant{
@@ -118,7 +118,7 @@ func TestMerchantService_RotateKeys_EncryptError(t *testing.T) {
 
 	mockRepo := mocks.NewMockMerchantRepository(ctrl)
 	mockEnc := mocks.NewMockEncryptionService(ctrl)
-	svc := NewMerchantService(mockRepo, mockEnc)
+	svc := NewMerchantService(mockRepo, mockEnc, false)
 
 	merchantID := uuid.New()
 	mockRepo.EXPECT().GetByID(gomock.Any(), merchantID).Return(&domain.Merchant{

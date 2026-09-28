@@ -17,12 +17,13 @@ import (
 
 // AuthServiceImpl implements ports.AuthService.
 type AuthServiceImpl struct {
-	merchantRepo ports.MerchantRepository
-	walletRepo   ports.WalletRepository
-	hashSvc      ports.HashService
-	encSvc       ports.EncryptionService
-	tokenSvc     ports.TokenService
-	transactor   ports.DBTransactor
+	merchantRepo       ports.MerchantRepository
+	walletRepo         ports.WalletRepository
+	hashSvc            ports.HashService
+	encSvc             ports.EncryptionService
+	tokenSvc           ports.TokenService
+	transactor         ports.DBTransactor
+	allowLocalWebhooks bool // development only: accept http:// and localhost webhook URLs
 }
 
 // NewAuthService creates a new AuthServiceImpl.
@@ -33,14 +34,16 @@ func NewAuthService(
 	encSvc ports.EncryptionService,
 	tokenSvc ports.TokenService,
 	transactor ports.DBTransactor,
+	allowLocalWebhooks bool,
 ) *AuthServiceImpl {
 	return &AuthServiceImpl{
-		merchantRepo: merchantRepo,
-		walletRepo:   walletRepo,
-		hashSvc:      hashSvc,
-		encSvc:       encSvc,
-		tokenSvc:     tokenSvc,
-		transactor:   transactor,
+		merchantRepo:       merchantRepo,
+		walletRepo:         walletRepo,
+		hashSvc:            hashSvc,
+		encSvc:             encSvc,
+		tokenSvc:           tokenSvc,
+		transactor:         transactor,
+		allowLocalWebhooks: allowLocalWebhooks,
 	}
 }
 
@@ -49,7 +52,7 @@ func NewAuthService(
 func (s *AuthServiceImpl) Register(ctx context.Context, req ports.RegisterRequest) (*ports.RegisterResponse, error) {
 	// SSRF validation for webhook URL
 	if req.WebhookURL != nil && *req.WebhookURL != "" {
-		if err := ValidateWebhookURL(*req.WebhookURL); err != nil {
+		if err := ValidateWebhookURL(*req.WebhookURL, s.allowLocalWebhooks); err != nil {
 			return nil, apperror.Validation(fmt.Sprintf("invalid webhook URL: %v", err))
 		}
 	}
