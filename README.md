@@ -28,7 +28,7 @@ even under concurrent traffic, network retries and replayed requests.**
 | 🛡️ **Replay protection** | ±60 s timestamp window + single-use nonces stored in Redis; fails closed if Redis is down |
 | 🔐 **Encryption at rest** | Wallet balances, amounts and merchant secret keys encrypted with AES-256-GCM |
 | 🔑 **Credentials** | Argon2id password hashing, JWT sessions for the dashboard, rotatable API keys |
-| 📣 **Webhooks** | Signed payloads, exponential-backoff retries (15 s → 10 min), SSRF-safe URL validation, delivery log |
+| 📣 **Webhooks** | Transactional outbox (survives restarts, never sent for rolled-back payments), signed payloads, backoff retries (15 s → 10 min), SSRF-safe URLs |
 | 🚦 **Rate limiting** | Redis-backed per-merchant limits per endpoint group |
 | 🧾 **Audit trail** | Every write operation recorded with actor, IP and action |
 | 📊 **Observability** | Prometheus metrics + pre-provisioned Grafana dashboard |
@@ -62,7 +62,7 @@ graph TD
         Handlers --> PaySvc["Payment service"]
         Handlers --> OtherSvc["Auth · Merchant · Reporting"]
         PaySvc --> Crypto["AES-256-GCM · HMAC-SHA256"]
-        PaySvc -. async .-> Webhook["Webhook service<br/>retry with backoff"]
+        PaySvc -. outbox row .-> Webhook["Webhook dispatcher<br/>retry with backoff"]
     end
 
     subgraph Storage
@@ -101,10 +101,11 @@ sequenceDiagram
     A->>P: Idempotency lookup (source of truth)
     A->>P: BEGIN · SELECT wallet ... FOR UPDATE
     A->>A: Decrypt balance → check funds → debit → re-encrypt
-    A->>P: UPDATE wallet · INSERT transaction · INSERT idempotency log · COMMIT
+    A->>P: UPDATE wallet · INSERT transaction · INSERT webhook (outbox) · INSERT idempotency log · COMMIT
     A->>R: Cache response (24 h)
     A-->>M: 201 Created
-    A-)M: Webhook (async, signed, retried with backoff)
+    Note over A,P: Background dispatcher claims due outbox rows (FOR UPDATE SKIP LOCKED)
+    A-)M: Webhook (signed, X-Webhook-Id, retried with backoff)
 ```
 
 ## Quick Start
@@ -328,8 +329,8 @@ Python scripts in [scripts/demo](scripts/demo/README_DEMO.md) (`pip install -r s
 This is a learning / portfolio project that applies production patterns; it is not a
 certified payment processor. Known gaps:
 
-- [ ] Webhook retries run in-process — pending retries are lost on restart (planned:
-      transactional outbox + worker).
+- [x] ~~Webhook retries ran in-process and were lost on restart~~ — replaced by a
+      transactional outbox and a background dispatcher.
 - [x] ~~Replay protection failed open when Redis was unavailable~~ — now fails closed
       (`SYS_004`) unless `SPG_SECURITY_NONCE_FAIL_OPEN=true`. Rate limiting still fails open
       by design, favouring availability.

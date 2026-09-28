@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
@@ -42,7 +43,7 @@ func setupPaymentService(t *testing.T) *paymentTestDeps {
 	}
 	d.svc = NewPaymentService(
 		d.txRepo, d.walletRepo, d.idempRepo, d.idempCache,
-		d.encSvc, d.transactor, zerolog.Nop(),
+		d.encSvc, d.transactor, nil, zerolog.Nop(),
 	)
 	return d
 }
@@ -462,4 +463,59 @@ func assertAppError(t *testing.T, err error, expectedCode string) {
 	var appErr *apperror.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, expectedCode, appErr.Code)
+}
+
+// ==================== Webhook outbox ====================
+
+// expectPaymentUpToTxCreate sets up the happy-path expectations of ProcessPayment
+// up to and including the transaction insert.
+func expectPaymentUpToTxCreate(d *paymentTestDeps, ctx context.Context, tx *mockTx, merchantID uuid.UUID) {
+	idempKey := domain.BuildIdempotencyKey(merchantID, "ORDER-WH")
+	d.idempCache.EXPECT().Get(ctx, idempKey).Return(nil, nil)
+	d.idempRepo.EXPECT().Get(ctx, idempKey).Return(nil, nil)
+	d.transactor.EXPECT().Begin(ctx).Return(tx, nil)
+	d.walletRepo.EXPECT().GetByMerchantIDForUpdate(ctx, tx, merchantID, "VND").Return(&domain.Wallet{
+		ID: uuid.New(), MerchantID: merchantID, Currency: "VND", EncryptedBalance: "enc_100000",
+	}, nil)
+	d.encSvc.EXPECT().Decrypt("enc_100000").Return("100000", nil)
+	d.encSvc.EXPECT().Encrypt(gomock.Any()).Return("enc", nil).Times(2)
+	d.walletRepo.EXPECT().UpdateBalance(ctx, tx, gomock.Any(), "enc").Return(nil)
+	d.txRepo.EXPECT().Create(ctx, tx, gomock.Any()).Return(nil)
+}
+
+func TestPaymentService_ProcessPayment_EnqueuesWebhookInSameTx(t *testing.T) {
+	d := setupPaymentService(t)
+	webhooks := mocks.NewMockWebhookService(d.ctrl)
+	d.svc.webhooks = webhooks
+
+	ctx := context.Background()
+	merchantID := uuid.New()
+	tx := &mockTx{}
+	expectPaymentUpToTxCreate(d, ctx, tx, merchantID)
+	webhooks.EXPECT().Enqueue(ctx, tx, gomock.Any(), "VND").
+		DoAndReturn(func(_ context.Context, _ ports.Tx, txn *domain.Transaction, _ string) error {
+			assert.Equal(t, "ORDER-WH", txn.ReferenceID)
+			return nil
+		})
+	d.idempRepo.EXPECT().Create(ctx, tx, gomock.Any()).Return(nil)
+	d.idempCache.EXPECT().Set(ctx, gomock.Any(), gomock.Any(), idempotencyTTL).Return(nil)
+
+	_, err := d.svc.ProcessPayment(ctx, ports.PaymentRequest{MerchantID: merchantID, ReferenceID: "ORDER-WH", Amount: 50000, Currency: "VND"})
+	require.NoError(t, err)
+}
+
+func TestPaymentService_ProcessPayment_OutboxFailureAbortsPayment(t *testing.T) {
+	d := setupPaymentService(t)
+	webhooks := mocks.NewMockWebhookService(d.ctrl)
+	d.svc.webhooks = webhooks
+
+	ctx := context.Background()
+	merchantID := uuid.New()
+	tx := &mockTx{}
+	expectPaymentUpToTxCreate(d, ctx, tx, merchantID)
+	webhooks.EXPECT().Enqueue(ctx, tx, gomock.Any(), "VND").Return(errors.New("insert failed"))
+	// No idempotency log, commit or cache write may follow.
+
+	_, err := d.svc.ProcessPayment(ctx, ports.PaymentRequest{MerchantID: merchantID, ReferenceID: "ORDER-WH", Amount: 50000, Currency: "VND"})
+	require.Error(t, err)
 }

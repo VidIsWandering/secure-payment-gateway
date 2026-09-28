@@ -82,7 +82,11 @@ type IdempotencyRepository interface {
 
 // WebhookRepository defines persistence for webhook delivery logs.
 type WebhookRepository interface {
-	Create(ctx context.Context, log *domain.WebhookDeliveryLog) error
+	// CreateTx inserts a delivery record inside an existing DB transaction (outbox write).
+	CreateTx(ctx context.Context, tx Tx, log *domain.WebhookDeliveryLog) error
+	// ClaimDue returns up to limit PENDING deliveries that are due and pushes their
+	// next_retry_at forward by lease, so concurrent dispatchers skip them.
+	ClaimDue(ctx context.Context, limit int, lease time.Duration) ([]domain.WebhookDeliveryLog, error)
 	Update(ctx context.Context, log *domain.WebhookDeliveryLog) error
 	GetByTransactionID(ctx context.Context, txID uuid.UUID) ([]domain.WebhookDeliveryLog, error)
 }

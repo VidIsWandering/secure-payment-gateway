@@ -14,7 +14,6 @@ type RouterDeps struct {
 	AuthSvc                 ports.AuthService
 	PaymentSvc              ports.PaymentService
 	ReportingSvc            ports.ReportingService
-	WebhookSvc              ports.WebhookService
 	MerchantRepo            ports.MerchantRepository
 	EncSvc                  ports.EncryptionService
 	SigSvc                  ports.SignatureService
@@ -101,7 +100,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 
 	// --- HMAC-authenticated routes (merchant API) ---
 	hmacAuth := middleware.HMACAuth(deps.MerchantRepo, deps.EncSvc, deps.SigSvc, deps.NonceStore, deps.NonceFailOpen, deps.Logger)
-	paymentHandler := NewPaymentHandler(deps.PaymentSvc, deps.WebhookSvc, deps.TxRepo)
+	paymentHandler := NewPaymentHandler(deps.PaymentSvc, deps.TxRepo)
 	payments := v1.Group("/payments", hmacAuth)
 	{
 		payments.POST("", rl("payments"), paymentHandler.ProcessPayment)
@@ -110,7 +109,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 
 	// --- JWT-authenticated routes (dashboard) ---
 	jwtAuth := middleware.JWTAuth(deps.TokenSvc, deps.Logger)
-	walletHandler := NewWalletHandler(deps.PaymentSvc, deps.ReportingSvc, deps.WebhookSvc)
+	walletHandler := NewWalletHandler(deps.PaymentSvc, deps.ReportingSvc)
 	dashboardHandler := NewDashboardHandler(deps.ReportingSvc)
 
 	// Payment status (JWT auth)

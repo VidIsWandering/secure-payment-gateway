@@ -54,7 +54,7 @@ internal/
     payment_service.go            Payment / refund / top-up (locking + idempotency)
     auth_service.go               Registration (atomic merchant + wallet), login, JWT
     merchant_service.go           Profile, webhook URL, key rotation
-    webhook_service.go            Async delivery with exponential backoff
+    webhook_service.go            Transactional outbox + background dispatcher with backoff
     webhook_validator.go          SSRF-safe webhook URL validation
     reporting_service.go          Dashboard statistics, transaction history
     encryption_service.go         AES-256-GCM
@@ -95,5 +95,8 @@ docs/                           Design notes, OpenAPI spec, error codes, webhook
    [TRANSACTION_STRATEGY.md](TRANSACTION_STRATEGY.md).
 3. **Idempotency** is checked before any money moves: Redis first, PostgreSQL
    `idempotency_logs` as the source of truth.
-4. **No secrets or plaintext balances in logs.**
-5. **Handlers never return domain entities** — map them to DTOs.
+4. **Side effects of a money movement go through the outbox.** Webhooks are written with the
+   same DB transaction (`WebhookService.Enqueue`) and delivered by the dispatcher — never
+   sent directly from a handler.
+5. **No secrets or plaintext balances in logs.**
+6. **Handlers never return domain entities** — map them to DTOs.

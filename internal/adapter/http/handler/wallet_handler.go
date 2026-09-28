@@ -15,15 +15,13 @@ import (
 type WalletHandler struct {
 	paymentSvc   ports.PaymentService
 	reportingSvc ports.ReportingService
-	webhookSvc   ports.WebhookService
 }
 
 // NewWalletHandler creates a new WalletHandler.
-func NewWalletHandler(paymentSvc ports.PaymentService, reportingSvc ports.ReportingService, webhookSvc ports.WebhookService) *WalletHandler {
+func NewWalletHandler(paymentSvc ports.PaymentService, reportingSvc ports.ReportingService) *WalletHandler {
 	return &WalletHandler{
 		paymentSvc:   paymentSvc,
 		reportingSvc: reportingSvc,
-		webhookSvc:   webhookSvc,
 	}
 }
 
@@ -73,11 +71,6 @@ func (h *WalletHandler) Topup(c *gin.Context) {
 	}
 
 	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
-
-	// Trigger async webhook notification
-	if h.webhookSvc != nil {
-		_ = h.webhookSvc.EnqueueWebhook(c.Request.Context(), result)
-	}
 
 	response.Created(c, toTransactionResponse(result))
 }
