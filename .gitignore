@@ -1,5 +1,7 @@
 # Build artifacts
 bin/
+/api
+/server
 coverage.out
 coverage.html
 
@@ -13,9 +15,8 @@ coverage.html
 # Environment & secrets
 .env
 .env.*
+!.env.example
 *.local
-config.yaml
-config.yml
 
 # OS files
 .DS_Store
@@ -35,7 +36,7 @@ tmp/
 *.tmp
 *.log
 
-# AI scaffolding docs (not for public sharing)
+# Local working notes
 AI_INSTRUCTIONS.md
 PROJECT_STRUCTURE.md
 TECH_STACK.md
