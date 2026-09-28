@@ -1,5 +1,5 @@
 # ---- Build Stage ----
-FROM golang:1.25.14-alpine AS builder
+FROM golang:1.26.8-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-s -w" -o /app/server ./cmd/api
 
 # ---- Runtime Stage ----
-FROM alpine:3.21
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata
 

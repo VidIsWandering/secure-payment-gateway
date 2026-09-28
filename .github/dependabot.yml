@@ -7,6 +7,10 @@ updates:
     groups:
       go-dependencies:
         patterns: ["*"]
+    ignore:
+      # pgx >= 5.11 adds pgx.Rows.TypeMap, which pgxmock v4.9.0 does not implement yet.
+      - dependency-name: github.com/jackc/pgx/v5
+        versions: [">= 5.11.0"]
     commit-message:
       prefix: "chore(deps)"
 
@@ -21,5 +25,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Stay on the Go minor that golangci-lint in CI is built with.
+      - dependency-name: golang
+        versions: [">= 1.27"]
     commit-message:
       prefix: "chore(docker)"

@@ -108,7 +108,7 @@ sequenceDiagram
 
 ## Quick Start
 
-**Prerequisites:** Docker with Docker Compose. For local development also Go 1.25+ and Make.
+**Prerequisites:** Docker with Docker Compose. For local development also Go 1.26+ and Make.
 
 ```bash
 git clone https://github.com/VidIsWandering/secure-payment-gateway.git
