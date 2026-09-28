@@ -48,6 +48,7 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.False(t, cfg.Log.Pretty)
 
 	assert.False(t, cfg.Security.NonceFailOpen, "replay protection must fail closed by default")
+	assert.True(t, cfg.Database.AutoMigrate)
 }
 
 func TestLoad_FromYAMLFile(t *testing.T) {

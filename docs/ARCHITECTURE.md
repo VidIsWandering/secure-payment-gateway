@@ -76,7 +76,8 @@ pkg/
   logger/                       Zerolog setup
   response/                     Standard JSON envelope
 web/                            Embedded merchant dashboard (HTML/CSS/JS, go:embed)
-db/migrations/                  SQL migrations
+db/migrations/                  Versioned SQL migrations (golang-migrate), embedded via go:embed
+                                and applied at startup
 monitoring/                     Prometheus config + provisioned Grafana dashboard
 tests/
   integration/                  End-to-end + concurrency tests (in-memory repos, miniredis)

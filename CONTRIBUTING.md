@@ -27,8 +27,8 @@ Before you start, make sure you have installed:
    ```bash
    docker compose up -d postgres redis
    ```
-   The schema in `db/migrations/` is applied automatically the first time the PostgreSQL
-   container starts. PostgreSQL is exposed on host port **5435**.
+   PostgreSQL is exposed on host port **5435**. The API applies the migrations in
+   `db/migrations/` automatically when it starts.
 5. Run the API locally:
    ```bash
    cp .env.example .env   # then fill in SPG_JWT_SECRET and SPG_AES_KEY
@@ -43,6 +43,11 @@ Before you start, make sure you have installed:
   git checkout -b feature/your-feature-name
   ```
 - Make your changes. Ensure you adhere to the project's **Clean Architecture** guidelines as outlined in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- Schema changes go in a **new** migration — never edit one that has been released:
+  ```bash
+  make migrate-create name=add_payouts   # creates 00N_add_payouts.{up,down}.sql
+  ```
+  Every `up` migration needs a matching `down`, and `up` migrations should be safe to re-run.
 - Write unit tests for any new logic. If changing core transaction handling, verify with integration tests.
 
 ### 4. Code Quality and Testing

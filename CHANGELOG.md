@@ -10,8 +10,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Replay protection fails closed**: if the Redis nonce store is unavailable, signed requests are rejected with `503 SYS_004` instead of being accepted without replay protection. Opt out with `SPG_SECURITY_NONCE_FAIL_OPEN=true`.
 
 ### Added
+- **Versioned migrations** with golang-migrate: migrations are embedded in the binary and applied at startup (`SPG_DATABASE_AUTO_MIGRATE`, default `true`); `make migrate-up|down|version|create`. Existing databases created by the old init script are adopted at version 1 without data changes. CI runs the migrations against a real PostgreSQL.
 - **CodeQL** code scanning (Go, JavaScript, GitHub Actions) with the `security-extended` query suite.
 - **Release pipeline**: publishing a GitHub release builds and pushes a multi-arch (amd64/arm64) image to `ghcr.io/vidiswandering/secure-payment-gateway` with SBOM and build-provenance attestation.
+
+### Removed
+- `db/schema.sql`, which had drifted from the migrations (it still used `DECIMAL` amounts and lacked unique constraints). `db/migrations/` is the single source of truth.
+- The PostgreSQL `docker-entrypoint-initdb.d` mount in docker-compose; the API now creates the schema.
 
 ### Changed
 - **Demo scripts** print English output and check the actual responses: `demo_security.py` and `demo_concurrency.py` report ✅/❌ per scenario and exit non-zero on failure.

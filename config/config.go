@@ -36,6 +36,7 @@ type DatabaseConfig struct {
 	MaxConns        int32         `mapstructure:"max_conns"`
 	MinConns        int32         `mapstructure:"min_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	AutoMigrate     bool          `mapstructure:"auto_migrate"` // apply embedded migrations at startup
 }
 
 // DSN returns the PostgreSQL connection string.
@@ -128,6 +129,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("database.max_conns", 20)
 	v.SetDefault("database.min_conns", 5)
 	v.SetDefault("database.conn_max_lifetime", "30m")
+	v.SetDefault("database.auto_migrate", true)
 	v.SetDefault("redis.host", "localhost")
 	v.SetDefault("redis.port", 6379)
 	v.SetDefault("redis.password", "")

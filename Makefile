@@ -1,4 +1,4 @@
-.PHONY: build test lint run clean docker-build docker-up docker-down migrate coverage
+.PHONY: build test test-v lint run clean docker-build docker-up docker-down migrate-up migrate-down migrate-version migrate-create mocks coverage help
 
 # Variables
 APP_NAME := spg-api
@@ -41,12 +41,23 @@ docker-up:
 docker-down:
 	docker compose down
 
-# Database migrations
+# Database migrations (golang-migrate). The API also applies them at startup
+# unless SPG_DATABASE_AUTO_MIGRATE=false.
+MIGRATE := go run -tags pgx5 github.com/golang-migrate/migrate/v4/cmd/migrate@v4.20.1
+MIGRATE_DB = $(subst postgres://,pgx5://,$(DATABASE_URL))
+
 migrate-up:
-	psql "$$DATABASE_URL" -f db/migrations/001_init_schema.up.sql
+	$(MIGRATE) -path db/migrations -database "$(MIGRATE_DB)" up
 
 migrate-down:
-	psql "$$DATABASE_URL" -f db/migrations/001_init_schema.down.sql
+	$(MIGRATE) -path db/migrations -database "$(MIGRATE_DB)" down 1
+
+migrate-version:
+	$(MIGRATE) -path db/migrations -database "$(MIGRATE_DB)" version
+
+migrate-create:
+	@test -n "$(name)" || (echo "usage: make migrate-create name=add_something" && exit 1)
+	$(MIGRATE) create -ext sql -dir db/migrations -seq -digits 3 $(name)
 
 # Mock generation
 mocks:
@@ -69,7 +80,9 @@ help:
 	@echo "  docker-build - Build Docker image"
 	@echo "  docker-up    - Start docker-compose stack"
 	@echo "  docker-down  - Stop docker-compose stack"
-	@echo "  migrate-up   - Apply database migrations"
-	@echo "  migrate-down - Rollback database migrations"
+	@echo "  migrate-up      - Apply pending migrations (needs DATABASE_URL)"
+	@echo "  migrate-down    - Roll back the latest migration"
+	@echo "  migrate-version - Show the current schema version"
+	@echo "  migrate-create  - Create a new migration: make migrate-create name=..."
 	@echo "  mocks        - Regenerate mock files"
 	@echo "  clean        - Remove build artifacts"

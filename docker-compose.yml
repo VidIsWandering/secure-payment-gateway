@@ -11,7 +11,6 @@ services:
       - "5435:5432" # host 5435 avoids clashing with a local PostgreSQL
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./db/migrations/001_init_schema.up.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

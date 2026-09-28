@@ -78,6 +78,7 @@ jobs:
           SPG_DATABASE_DBNAME: spg_test
           SPG_REDIS_HOST: localhost
           SPG_REDIS_PORT: 6379
+          SPG_TEST_DATABASE_URL: postgres://spg:spg_secret@localhost:5432/spg_test?sslmode=disable
         run: |
           go test ./... -race -coverprofile=coverage.out -covermode=atomic -count=1
 
