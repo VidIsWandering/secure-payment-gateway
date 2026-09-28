@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"secure-payment-gateway/config"
+	"github.com/VidIsWandering/secure-payment-gateway/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"

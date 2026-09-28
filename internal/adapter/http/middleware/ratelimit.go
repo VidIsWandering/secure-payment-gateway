@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/pkg/apperror"
-	"secure-payment-gateway/pkg/response"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"

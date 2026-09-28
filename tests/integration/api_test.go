@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	httpHandler "secure-payment-gateway/internal/adapter/http/handler"
-	redisStorage "secure-payment-gateway/internal/adapter/storage/redis"
-	"secure-payment-gateway/internal/service"
-	"secure-payment-gateway/pkg/logger"
+	httpHandler "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/handler"
+	redisStorage "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/redis"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/service"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/logger"
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"

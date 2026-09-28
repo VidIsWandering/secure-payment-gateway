@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"secure-payment-gateway/internal/adapter/http/dto"
-	"secure-payment-gateway/internal/adapter/http/middleware"
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/pkg/apperror"
-	"secure-payment-gateway/pkg/response"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/dto"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/middleware"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -71,6 +71,8 @@ func (h *WalletHandler) Topup(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
+
+	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
 
 	// Trigger async webhook notification
 	if h.webhookSvc != nil {

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"secure-payment-gateway/internal/adapter/http/middleware"
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/middleware"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -11,24 +11,24 @@ import (
 
 // RouterDeps holds all dependencies needed to set up routes.
 type RouterDeps struct {
-	AuthSvc        ports.AuthService
-	PaymentSvc     ports.PaymentService
-	ReportingSvc   ports.ReportingService
-	WebhookSvc     ports.WebhookService
-	MerchantRepo   ports.MerchantRepository
-	EncSvc         ports.EncryptionService
-	SigSvc         ports.SignatureService
-	NonceStore     ports.NonceStore
-	TokenSvc       ports.TokenService
-	RateLimitStore ports.RateLimitStore            // nil = rate limiting disabled
-	HealthCheckers []ports.HealthChecker
-	MerchantSvc    ports.MerchantManagementService // nil = merchant management disabled
-	AuditSvc       ports.AuditService              // nil = audit logging disabled
-	TxRepo         ports.TransactionRepository      // nil = payment status disabled
-	Logger         zerolog.Logger
-	ServerMode     string // "debug", "release", "test"
-	RateLimitPayments      int64 // 0 = use default (100/min)
-	RateLimitPaymentsRefund int64 // 0 = use default (30/min)
+	AuthSvc                 ports.AuthService
+	PaymentSvc              ports.PaymentService
+	ReportingSvc            ports.ReportingService
+	WebhookSvc              ports.WebhookService
+	MerchantRepo            ports.MerchantRepository
+	EncSvc                  ports.EncryptionService
+	SigSvc                  ports.SignatureService
+	NonceStore              ports.NonceStore
+	TokenSvc                ports.TokenService
+	RateLimitStore          ports.RateLimitStore // nil = rate limiting disabled
+	HealthCheckers          []ports.HealthChecker
+	MerchantSvc             ports.MerchantManagementService // nil = merchant management disabled
+	AuditSvc                ports.AuditService              // nil = audit logging disabled
+	TxRepo                  ports.TransactionRepository     // nil = payment status disabled
+	Logger                  zerolog.Logger
+	ServerMode              string // "debug", "release", "test"
+	RateLimitPayments       int64  // 0 = use default (100/min)
+	RateLimitPaymentsRefund int64  // 0 = use default (30/min)
 }
 
 // SetupRouter initialises the Gin engine with all routes and middleware.

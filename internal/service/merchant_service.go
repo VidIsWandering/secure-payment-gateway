@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
 
 	"github.com/google/uuid"
 )

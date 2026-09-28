@@ -10,6 +10,7 @@ Before you start, make sure you have installed:
 - Go 1.25+
 - Docker and Docker Compose
 - Make
+- [golangci-lint](https://golangci-lint.run/welcome/install/) v2
 
 ### 2. Setting Up Your Development Environment
 
@@ -26,9 +27,13 @@ Before you start, make sure you have installed:
    ```bash
    docker compose up -d postgres redis
    ```
-5. Apply database migrations:
+   The schema in `db/migrations/` is applied automatically the first time the PostgreSQL
+   container starts. PostgreSQL is exposed on host port **5435**.
+5. Run the API locally:
    ```bash
-   make migrate-up
+   cp .env.example .env   # then fill in SPG_JWT_SECRET and SPG_AES_KEY
+   set -a && source .env && set +a
+   make run
    ```
 
 ### 3. Making Changes
@@ -37,7 +42,7 @@ Before you start, make sure you have installed:
   ```bash
   git checkout -b feature/your-feature-name
   ```
-- Make your changes. Ensure you adhere to the project's **Clean Architecture** guidelines as outlined in `PROJECT_STRUCTURE.md`.
+- Make your changes. Ensure you adhere to the project's **Clean Architecture** guidelines as outlined in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Write unit tests for any new logic. If changing core transaction handling, verify with integration tests.
 
 ### 4. Code Quality and Testing
@@ -79,7 +84,11 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 When contributing to core services (especially `payment_service.go`), please remember the project's stringent requirements:
 1. **Never** import external framework libraries into `internal/core`.
-2. All wallet balance updates **must** be executed within a `pgx.Tx` transaction utilizing Pessimistic Locking (`FOR UPDATE`).
+2. All wallet balance updates **must** be executed within a single DB transaction (`ports.Tx`) utilizing Pessimistic Locking (`FOR UPDATE`).
 3. Ensure idempotency operations interact correctly with the Redis cache fallback chain.
+
+## Reporting Security Issues
+
+Please **do not** open a public issue for security vulnerabilities. Follow the process in [SECURITY.md](SECURITY.md) instead.
 
 Once your PR is submitted, project maintainers will review the CI test results and leave feedback. Thank you for your contribution!

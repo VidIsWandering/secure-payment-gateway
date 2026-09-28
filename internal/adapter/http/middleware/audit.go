@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

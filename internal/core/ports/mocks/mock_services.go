@@ -11,9 +11,9 @@ package mocks
 
 import (
 	context "context"
+	domain "github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	ports "github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 	reflect "reflect"
-	domain "secure-payment-gateway/internal/core/domain"
-	ports "secure-payment-gateway/internal/core/ports"
 	time "time"
 
 	uuid "github.com/google/uuid"

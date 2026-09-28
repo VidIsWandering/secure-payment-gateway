@@ -21,7 +21,7 @@ redis:
   db: 0
 
 jwt:
-  secret: "change-me-in-production-use-env-var"
+  secret: "" # >= 32 chars. Required — set via SPG_JWT_SECRET env var.
   expiry: "24h"
   issuer: "secure-payment-gateway"
 

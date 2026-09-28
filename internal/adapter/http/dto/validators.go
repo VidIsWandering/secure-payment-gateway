@@ -42,7 +42,7 @@ func validateSafeURL(fl validator.FieldLevel) bool {
 // field (including *string) of a struct pointer.
 func SanitizeStruct(v interface{}) {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
 		return
 	}
 	sanitizeFields(rv.Elem())
@@ -57,7 +57,7 @@ func sanitizeFields(rv reflect.Value) {
 		switch f.Kind() {
 		case reflect.String:
 			f.SetString(sanitize(f.String()))
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if f.IsNil() {
 				continue
 			}

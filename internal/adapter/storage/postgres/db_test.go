@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/config"
+	"github.com/VidIsWandering/secure-payment-gateway/config"
 
 	"github.com/stretchr/testify/assert"
 )

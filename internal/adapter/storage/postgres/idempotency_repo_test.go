@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
 
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
