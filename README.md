@@ -1,266 +1,341 @@
+<div align="center">
+
 # Secure Payment Gateway
 
-A production-ready payment gateway API built in Go following Clean Architecture principles, with a focus on security, reliability, and testability.
+**A payment gateway API in Go built around one guarantee: money is never lost or double-spent —
+even under concurrent traffic, network retries and replayed requests.**
+
+[![CI](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/VidIsWandering/secure-payment-gateway)](go.mod)
+[![Go Report Card](https://goreportcard.com/badge/github.com/VidIsWandering/secure-payment-gateway)](https://goreportcard.com/report/github.com/VidIsWandering/secure-payment-gateway)
+[![Release](https://img.shields.io/github/v/release/VidIsWandering/secure-payment-gateway)](https://github.com/VidIsWandering/secure-payment-gateway/releases)
+[![License: MIT](https://img.shields.io/github/license/VidIsWandering/secure-payment-gateway)](LICENSE)
+
+[Features](#features) · [Quick Start](#quick-start) · [Request Signing](#request-signing) · [API](#api-reference) · [Benchmarks](#load-testing--benchmarks) · [Design Decisions](#design-decisions) · [Docs](#documentation)
+
+<img src="docs/images/dashboard.png" alt="Merchant dashboard after a load test" width="900">
+
+</div>
 
 ## Features
 
--   **Payment Processing** — Create payments with idempotency protection, automatic balance deduction, and signature verification
--   **Refund & Top-up** — Full refund workflow and wallet top-up with transaction history
--   **Merchant Authentication** — API key/secret + HMAC signature auth, JWT-based session tokens
--   **Security** — AES-256-GCM encryption, HMAC-SHA256 signatures, Argon2id password hashing, replay-attack prevention via nonce store
--   **Webhook Delivery** — Asynchronous webhook notifications with retry logic and delivery persistence
--   **Rate Limiting** — Redis-backed sliding-window rate limiter per merchant
--   **Audit Logging** — Automatic audit trail for all write operations
--   **Reporting Dashboard** — Revenue summaries, success rates, and transaction history
--   **Observability** — Built-in Prometheus metrics and Grafana dashboard for monitoring requests, payments, and webhooks
--   **Swagger UI** — Built-in API documentation at `/swagger`
--   **Health Checks** — Deep health check endpoint with per-dependency status (PostgreSQL, Redis)
--   **Input Sanitization** — XSS protection, strict input validation, request body size limit
+| | |
+| --- | --- |
+| 💸 **Payments, refunds & top-ups** | ACID transactions with `SELECT ... FOR UPDATE` pessimistic locking on the wallet row |
+| 🔁 **Idempotency** | Two layers — Redis fast path, PostgreSQL `UNIQUE(merchant_id, reference_id)` as the source of truth |
+| ✍️ **Signed requests** | HMAC-SHA256 over `METHOD\|PATH\|TIMESTAMP\|NONCE\|BODY`, constant-time verification |
+| 🛡️ **Replay protection** | ±60 s timestamp window + single-use nonces stored in Redis |
+| 🔐 **Encryption at rest** | Wallet balances, amounts and merchant secret keys encrypted with AES-256-GCM |
+| 🔑 **Credentials** | Argon2id password hashing, JWT sessions for the dashboard, rotatable API keys |
+| 📣 **Webhooks** | Signed payloads, exponential-backoff retries (15 s → 10 min), SSRF-safe URL validation, delivery log |
+| 🚦 **Rate limiting** | Redis-backed per-merchant limits per endpoint group |
+| 🧾 **Audit trail** | Every write operation recorded with actor, IP and action |
+| 📊 **Observability** | Prometheus metrics + pre-provisioned Grafana dashboard |
+| 🖥️ **Merchant dashboard** | Embedded web UI (`go:embed`): revenue stats, history, API keys, sandbox checkout |
+| 📘 **API docs** | OpenAPI 3 spec with Swagger UI at `/swagger` |
 
-## System Architecture
+## Screenshots
 
-```mermaid
-graph TD
-    Client[Client / Merchant App] -->|HTTPS Request| API[API Gateway / Gin Router]
-    
-    subgraph "Input & Validation Layer"
-        API --> Auth[Auth Middleware]
-        API --> RateLimit[Rate Limit Middleware]
-    end
-
-    subgraph "Core Business Layer (Application)"
-        Auth --> PaymentSVC[Payment Service]
-        Auth --> AuthSVC[Auth Service]
-        PaymentSVC --> IdempotencyLogic[Idempotency Check]
-        PaymentSVC --> SecSVC[EncSvc / SigSvc]
-    end
-
-    subgraph "Storage Layer"
-        RateLimit -.-> RedisStore[(Redis\nRate Limiter)]
-        IdempotencyLogic -.-> RedisStore[(Redis\nCache)]
-        PaymentSVC --> DB[(PostgreSQL\nACID & Pessimistic Locks)]
-        AuthSVC --> DB
-    end
-
-    subgraph "Async Processes"
-        PaymentSVC --> WebhookQ[Webhook Queue]
-        WebhookQ -.-> Retries[Retry Mechanism\nExpo-backoff]
-        Retries --> ClientWebhook[Merchant Webhook URL]
-    end
-```
+| Grafana monitoring | Swagger UI |
+| --- | --- |
+| <img src="docs/images/grafana.png" alt="Grafana dashboard"> | <img src="docs/images/swagger.png" alt="Swagger UI"> |
+| **Landing page** | **Sandbox checkout** |
+| <img src="docs/images/landing.png" alt="Landing page"> | <img src="docs/images/checkout-demo.png" alt="Checkout demo"> |
 
 ## Architecture
 
-```
-cmd/api/              → Application entry point & wire-up
-internal/
-  core/
-    domain/           → Business entities (Transaction, Merchant, Wallet, etc.)
-    ports/            → Interface definitions (repositories, services)
-      mocks/          → Auto-generated gomock mocks
-  service/            → Business logic implementations
-  adapter/
-    http/
-      handler/        → Gin HTTP handlers & router
-      dto/            → Request/response DTOs with validation
-      middleware/     → Auth, rate-limit, audit, sanitizer, logging
-    storage/
-      postgres/       → PostgreSQL repository implementations
-      redis/          → Redis store implementations (nonce, idempotency, rate-limit)
-config/               → Configuration loading (Viper, env vars)
-pkg/                  → Shared packages (apperror, logger, response)
-tests/integration/    → End-to-end integration & concurrency tests
-db/migrations/        → SQL migration files
-docs/api/             → OpenAPI spec, webhook spec, error codes
+```mermaid
+graph TD
+    Client["Merchant server / Dashboard"] -->|HTTPS| Router["Gin router"]
+
+    subgraph HTTP["HTTP adapter"]
+        Router --> MW["Middleware<br/>request ID · CORS · sanitizer · timeout · metrics"]
+        MW --> HMAC["HMAC auth<br/>timestamp · nonce · signature"]
+        MW --> JWT["JWT auth"]
+        HMAC --> RL["Rate limiter"]
+        JWT --> RL
+        RL --> Handlers["Handlers + DTO validation"]
+    end
+
+    subgraph App["Application services"]
+        Handlers --> PaySvc["Payment service"]
+        Handlers --> OtherSvc["Auth · Merchant · Reporting"]
+        PaySvc --> Crypto["AES-256-GCM · HMAC-SHA256"]
+        PaySvc -. async .-> Webhook["Webhook service<br/>retry with backoff"]
+    end
+
+    subgraph Storage
+        Redis[("Redis<br/>nonces · idempotency cache · rate limits")]
+        PG[("PostgreSQL<br/>wallets FOR UPDATE · transactions · audit")]
+    end
+
+    HMAC -.-> Redis
+    RL -.-> Redis
+    PaySvc --> PG
+    PaySvc -.-> Redis
+    OtherSvc --> PG
+    Webhook --> MerchantURL["Merchant webhook URL"]
 ```
 
-## Tech Stack
+The codebase follows Clean Architecture (ports & adapters): `internal/core` has no
+infrastructure dependencies, services depend only on interfaces, and PostgreSQL/Redis/Gin
+live in `internal/adapter`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the layer
+rules and full directory layout.
 
-| Component     | Technology                          |
-| ------------- | ----------------------------------- |
-| Language      | Go 1.25+                            |
-| Web Framework | Gin                                 |
-| Database      | PostgreSQL 16                       |
-| Cache/Store   | Redis 7                             |
-| Config        | Viper (env prefix: `SPG_`)          |
-| Logging       | Zerolog (structured JSON)           |
-| Auth          | JWT (HS256), HMAC-SHA256, API Keys  |
-| Encryption    | AES-256-GCM                         |
-| Hashing       | Argon2id                            |
-| Testing       | testify, gomock, pgxmock, miniredis |
-| CI/CD         | GitHub Actions                      |
-| Container     | Docker (multi-stage build)          |
-| Observability | Prometheus & Grafana                |
+### Payment flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as Merchant
+    participant A as API
+    participant R as Redis
+    participant P as PostgreSQL
+
+    M->>A: POST /api/v1/payments + X-Merchant-Access-Key, X-Timestamp, X-Nonce, X-Signature
+    A->>A: Reject if timestamp is outside ±60 s
+    A->>R: Store nonce (SET NX, TTL 120 s) — reject if already used
+    A->>A: Verify HMAC-SHA256 signature (constant time)
+    A->>R: Idempotency lookup → return cached result if found
+    A->>P: Idempotency lookup (source of truth)
+    A->>P: BEGIN · SELECT wallet ... FOR UPDATE
+    A->>A: Decrypt balance → check funds → debit → re-encrypt
+    A->>P: UPDATE wallet · INSERT transaction · INSERT idempotency log · COMMIT
+    A->>R: Cache response (24 h)
+    A-->>M: 201 Created
+    A-)M: Webhook (async, signed, retried with backoff)
+```
 
 ## Quick Start
 
-### Prerequisites
-
--   Go 1.25+
--   Docker & Docker Compose
--   Make (optional)
-
-### Run with Docker Compose
+**Prerequisites:** Docker with Docker Compose. For local development also Go 1.25+ and Make.
 
 ```bash
-# Start all services (PostgreSQL, Redis, App, Prometheus, Grafana)
+git clone https://github.com/VidIsWandering/secure-payment-gateway.git
+cd secure-payment-gateway
 docker compose up -d
-
-# The API is available at http://localhost:8080
-# Swagger UI at http://localhost:8080/swagger
-# Health check at http://localhost:8080/health
-# Prometheus metrics at http://localhost:8080/metrics 
-# Grafana Dashboard at http://localhost:3000 (admin / admin)
 ```
 
-### Run Locally
+| Service | URL |
+| --- | --- |
+| Web UI & merchant dashboard | http://localhost:8080 (`/register`, `/login`, `/dashboard`) |
+| Sandbox checkout | http://localhost:8080/checkout-demo |
+| Swagger UI | http://localhost:8080/swagger |
+| Health check | http://localhost:8080/health |
+| Prometheus metrics | http://localhost:8080/metrics |
+| Grafana | http://localhost:3005 (`admin` / `admin`) |
+| Prometheus | http://localhost:9090 |
+
+The database schema is applied automatically on first start. To see the gateway in action,
+run the [demo scripts](#demo-scripts).
+
+> [!NOTE]
+> The compose file ships **development defaults** (sample AES key, Grafana `admin/admin`,
+> `sslmode=disable`). Override `JWT_SECRET` / `AES_KEY` and harden these before exposing the
+> stack anywhere.
+
+### Run the API from source
 
 ```bash
-# Start dependencies
-docker compose up -d postgres redis
+docker compose up -d postgres redis   # PostgreSQL on host port 5435, Redis on 6379
 
-# Set required environment variables
-export SPG_JWT_SECRET="your-secret-key-min-32-characters-long"
-export SPG_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+cp .env.example .env
+# Fill in the two required secrets:
+#   SPG_JWT_SECRET=$(openssl rand -base64 48)
+#   SPG_AES_KEY=$(openssl rand -hex 32)
+set -a && source .env && set +a
 
-# Run the application
-make run
-# or: go run ./cmd/api
+make run          # or: go run ./cmd/api
+make build        # static binary in bin/spg-api
 ```
 
-### Build
+## Request Signing
 
-```bash
-make build
-# Output: bin/spg-api
+Money-moving merchant endpoints (`POST /api/v1/payments`, `POST /api/v1/payments/refund`)
+require four headers:
+
+| Header | Value |
+| --- | --- |
+| `X-Merchant-Access-Key` | Merchant access key |
+| `X-Timestamp` | Unix time in seconds — must be within ±60 s of server time |
+| `X-Nonce` | Unique random string per request (e.g. UUID v4) |
+| `X-Signature` | Lowercase hex `HMAC-SHA256(secret_key, canonical_string)` |
+
+```text
+canonical_string = METHOD + "|" + PATH + "|" + TIMESTAMP + "|" + NONCE + "|" + RAW_BODY
 ```
+
+```python
+import hashlib, hmac, json, time, uuid, requests
+
+ACCESS_KEY, SECRET_KEY = "<access_key>", "<secret_key>"   # from /dashboard → Developer Settings
+
+path = "/api/v1/payments"
+body = json.dumps({"reference_id": "ORDER-1001", "amount": 150000, "currency": "VND"})
+ts, nonce = str(int(time.time())), str(uuid.uuid4())
+
+canonical = f"POST|{path}|{ts}|{nonce}|{body}"
+signature = hmac.new(SECRET_KEY.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+resp = requests.post(f"http://localhost:8080{path}", data=body, headers={
+    "Content-Type": "application/json",
+    "X-Merchant-Access-Key": ACCESS_KEY,
+    "X-Timestamp": ts,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+})
+print(resp.status_code, resp.json())
+```
+
+Sign the **exact bytes** you send. Re-serialising the JSON after signing will change the
+body and fail verification. Error codes are listed in
+[docs/api/ERROR_CODES.md](docs/api/ERROR_CODES.md).
+
+## API Reference
+
+Full specification: [docs/api/openapi.yaml](docs/api/openapi.yaml) (served at `/swagger`).
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/auth/register` | — | Register a merchant (creates merchant + wallet atomically) |
+| `POST` | `/api/v1/auth/login` | — | Log in and obtain a JWT |
+| `POST` | `/api/v1/payments` | HMAC signature | Create a payment |
+| `POST` | `/api/v1/payments/refund` | HMAC signature | Refund a payment (full or partial) |
+| `GET` | `/api/v1/payments/:id/status` | JWT | Get payment status |
+| `POST` | `/api/v1/wallets/topup` | JWT | Top up the wallet (sandbox funding) |
+| `GET` | `/api/v1/wallets/balance` | JWT | Get wallet balance |
+| `GET` | `/api/v1/merchants/me` | JWT | Get merchant profile |
+| `PUT` | `/api/v1/merchants/me/webhook` | JWT | Update webhook URL (SSRF-validated) |
+| `POST` | `/api/v1/merchants/me/rotate-keys` | JWT | Rotate API keys |
+| `GET` | `/api/v1/dashboard/stats` | JWT | Revenue and success-rate summary |
+| `GET` | `/api/v1/transactions` | JWT | Paginated transaction history |
+| `GET` | `/health` | — | Deep health check (PostgreSQL + Redis) |
+| `GET` | `/metrics` | — | Prometheus metrics |
+| `GET` | `/swagger` | — | Swagger UI (disabled in `release` mode) |
+
+Default rate limits per merchant: payments 100/min, refunds 30/min, top-ups 20/min,
+dashboard 60/min, login 10/min, registration 5/hour.
 
 ## Configuration
 
-All configuration is via environment variables with the `SPG_` prefix:
+Configuration is loaded from [config/config.yaml](config/config.yaml) and overridden by
+environment variables with the `SPG_` prefix. [.env.example](.env.example) lists every
+variable.
 
-| Variable                 | Default           | Description                                   |
-| ------------------------ | ----------------- | --------------------------------------------- |
-| `SPG_SERVER_PORT`        | `8080`            | HTTP server port                              |
-| `SPG_SERVER_MODE`        | `debug`           | Gin mode (`debug`, `release`, `test`)         |
-| `SPG_DATABASE_HOST`      | `localhost`       | PostgreSQL host                               |
-| `SPG_DATABASE_PORT`      | `5432`            | PostgreSQL port                               |
-| `SPG_DATABASE_USER`      | `postgres`        | Database user                                 |
-| `SPG_DATABASE_PASSWORD`  | `postgres`        | Database password                             |
-| `SPG_DATABASE_DBNAME`    | `payment_gateway` | Database name                                 |
-| `SPG_DATABASE_SSLMODE`   | `disable`         | SSL mode                                      |
-| `SPG_DATABASE_MAX_CONNS` | `20`              | Max pool connections                          |
-| `SPG_REDIS_HOST`         | `localhost`       | Redis host                                    |
-| `SPG_REDIS_PORT`         | `6379`            | Redis port                                    |
-| `SPG_JWT_SECRET`         | —                 | **Required.** JWT signing key (min 32 chars)  |
-| `SPG_JWT_EXPIRY`         | `24h`             | JWT token expiry                              |
-| `SPG_AES_KEY`            | —                 | **Required.** 64-char hex key for AES-256-GCM |
-| `SPG_LOG_LEVEL`          | `info`            | Log level (`debug`, `info`, `warn`, `error`)  |
-| `SPG_LOG_PRETTY`         | `false`           | Human-readable logs (dev only)                |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SPG_JWT_SECRET` | — | **Required.** JWT signing key, ≥ 32 characters |
+| `SPG_AES_KEY` | — | **Required.** 64 hex characters (AES-256 key) |
+| `SPG_SERVER_PORT` | `8080` | HTTP port |
+| `SPG_SERVER_MODE` | `debug` | `debug`, `release` or `test` |
+| `SPG_DATABASE_HOST` / `_PORT` | `localhost` / `5432` | PostgreSQL address (`5435` when using compose from the host) |
+| `SPG_DATABASE_USER` / `_PASSWORD` / `_DBNAME` | `postgres` / `postgres` / `payment_gateway` | PostgreSQL credentials |
+| `SPG_DATABASE_SSLMODE` | `disable` | PostgreSQL SSL mode |
+| `SPG_DATABASE_MAX_CONNS` | `20` | Connection pool size |
+| `SPG_REDIS_HOST` / `_PORT` | `localhost` / `6379` | Redis address |
+| `SPG_JWT_EXPIRY` | `24h` | JWT lifetime |
+| `SPG_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `SPG_LOG_PRETTY` | `false` | Human-readable logs (development) |
+| `SPG_RATELIMIT_PAYMENTS` | `0` | Override payments limit (req/min, `0` = default) |
+| `SPG_RATELIMIT_PAYMENTS_REFUND` | `0` | Override refunds limit (req/min, `0` = default) |
 
-## API Endpoints
-
-### Authentication
-
-| Method | Path                    | Description                |
-| ------ | ----------------------- | -------------------------- |
-| `POST` | `/api/v1/auth/register` | Register a new merchant    |
-| `POST` | `/api/v1/auth/login`    | Login and obtain JWT token |
-
-### Payments
-
-| Method | Path                          | Auth                | Description          |
-| ------ | ----------------------------- | ------------------- | -------------------- |
-| `POST` | `/api/v1/payments`            | API Key + Signature | Create a payment     |
-| `POST` | `/api/v1/payments/refund`     | API Key + Signature | Refund a transaction |
-| `GET`  | `/api/v1/payments/:id/status` | JWT                 | Get payment status   |
-
-### Wallets
-
-| Method | Path                      | Auth                | Description        |
-| ------ | ------------------------- | ------------------- | ------------------ |
-| `POST` | `/api/v1/wallets/topup`   | API Key + Signature | Top up wallet      |
-| `GET`  | `/api/v1/wallets/balance` | JWT                 | Get wallet balance |
-
-### Merchant Management
-
-| Method | Path                               | Auth | Description          |
-| ------ | ---------------------------------- | ---- | -------------------- |
-| `GET`  | `/api/v1/merchants/me`             | JWT  | Get merchant profile |
-| `PUT`  | `/api/v1/merchants/me/webhook`     | JWT  | Update webhook URL   |
-| `POST` | `/api/v1/merchants/me/rotate-keys` | JWT  | Rotate API keys      |
-
-### Reporting
-
-| Method | Path                      | Auth | Description                    |
-| ------ | ------------------------- | ---- | ------------------------------ |
-| `GET`  | `/api/v1/dashboard/stats` | JWT  | Revenue & success rate summary |
-| `GET`  | `/api/v1/transactions`    | JWT  | Transaction history            |
-
-### System
-
-| Method | Path            | Description       |
-| ------ | --------------- | ----------------- |
-| `GET`  | `/health`       | Deep health check |
-| `GET`  | `/swagger`      | Swagger UI        |
-| `GET`  | `/swagger/spec` | OpenAPI YAML spec |
+The application refuses to start if the required secrets are missing or malformed.
 
 ## Testing
 
 ```bash
-# Run all tests
-make test
-
-# Run tests with verbose output
-make test-v
-
-# Run with coverage report
-make coverage
-
-# Run a specific test
-go test ./internal/service/... -run TestPayment -v
+make test        # all tests with the race detector
+make coverage    # HTML coverage report
+make lint        # golangci-lint v2
 ```
 
-**169 tests** across 12 packages covering:
+The suite covers services, handlers, middleware and DTO validation; PostgreSQL repositories
+(pgxmock); Redis stores (miniredis); end-to-end integration tests on in-memory repositories;
+and concurrency tests (100 concurrent payments, idempotency under race). CI runs lint, tests
+with `-race`, a coverage gate, `govulncheck`, secret scanning and a Docker build on every
+push.
 
--   Unit tests for all services, handlers, middleware, DTOs
--   PostgreSQL repository tests (pgxmock)
--   Redis store tests (miniredis)
--   Integration tests with in-memory repositories
--   Concurrency stress tests (100 concurrent payments, idempotency under race)
+## Load Testing & Benchmarks
 
-## Development
+[k6](https://k6.io/) scenarios in [tests/load](tests/load/README.md): a sustained stress test
+(50 VUs), a flash-sale spike (5 → 150 VUs) and a rate-limit check.
 
-```bash
-# Regenerate mocks after changing port interfaces
-make mocks
+Two consecutive reference runs — single instance via `docker compose` on a laptop (Intel
+Core i7-1355U, 12 threads, 20 GB RAM, WSL2). Every request debits the **same wallet row**,
+the worst case for lock contention:
 
-# Run linter
-make lint
+| Metric | Run 1 | Run 2 |
+| --- | --- | --- |
+| Signed payment requests (~4 min, peak 150 VUs) | 26,214 | 23,396 |
+| Server errors / failed requests | **0** / **0** | **0** / **0** |
+| Latency p50 | 8 ms | 6 ms |
+| Latency p95 | 283 ms | 536 ms ¹ |
 
-# Apply database migrations
-export DATABASE_URL="postgres://postgres:postgres@localhost:5432/payment_gateway?sslmode=disable"
-make migrate-up
+Ledger check after both runs: top-up 500,000,000 − 49,611 payments totalling 246,435,000 =
+wallet balance **253,565,000** ✅ — no lost or duplicated debits, and **0** duplicate
+`reference_id`s.
 
-# Build Docker image
-make docker-build
+¹ Run 2 shared the machine with other workloads; tail latency is dominated by waiting for
+the wallet row lock.
 
-# See all available commands
-make help
-```
+## Demo Scripts
 
-## Security
+Python scripts in [scripts/demo](scripts/demo/README_DEMO.md) (`pip install -r scripts/demo/requirements.txt`):
 
-This gateway implements multiple security layers:
+| Script | Shows |
+| --- | --- |
+| `demo_payment.py` | Register → top up → signed payment → refund → webhook received |
+| `demo_security.py` | Tampered body → `SEC_002`, replayed request → `SEC_004`, stale timestamp → `SEC_003` |
+| `demo_concurrency.py` | 10 simultaneous debits of the full balance → exactly 1 succeeds; 10 retries of one order → charged once |
 
-1. **Authentication**: Dual-layer — API key + HMAC-SHA256 signature for payment operations, JWT for session-based access
-2. **Encryption at Rest**: Merchant secret keys encrypted with AES-256-GCM before storage
-3. **Password Hashing**: Argon2id with per-user salt
-4. **Replay Protection**: Redis-backed nonce store prevents request replay attacks
-5. **Input Validation**: Strict validation rules, HTML entity escaping, 1MB body size limit
-6. **Rate Limiting**: Per-merchant sliding-window rate limiter
-7. **Audit Trail**: All write operations are automatically logged with IP, action, and details
+## Design Decisions
+
+- **Pessimistic over optimistic locking.** A merchant wallet is a hot row. Optimistic
+  version checks turn contention into retry storms; `SELECT ... FOR UPDATE` serialises
+  debits with predictable latency and no retry logic in clients.
+- **Balances encrypted at rest.** A leaked database dump does not reveal balances. The
+  trade-off is that arithmetic can't happen in SQL (`balance = balance - x`), so the row is
+  locked, decrypted, checked and re-encrypted inside one transaction.
+- **Integer minor units.** Amounts are `int64`/`BIGINT` — no floating-point money.
+- **Idempotency in two layers.** Redis answers retries cheaply; the PostgreSQL unique
+  constraint guarantees correctness even if Redis is empty or unavailable.
+- **HMAC + timestamp + nonce** rather than bearer API keys for money movement: a captured
+  request can be neither modified nor replayed.
+- **Argon2id** for passwords (memory-hard, OWASP-recommended).
+
+## Limitations & Roadmap
+
+This is a learning / portfolio project that applies production patterns; it is not a
+certified payment processor. Known gaps:
+
+- [ ] Webhook retries run in-process — pending retries are lost on restart (planned:
+      transactional outbox + worker).
+- [ ] Nonce and rate-limit checks **fail open** if Redis is unavailable (planned:
+      configurable fail-closed mode).
+- [ ] JWT uses a shared HS256 secret without refresh tokens or revocation.
+- [ ] Migrations are applied with `psql`; no versioned migration tool yet.
+- [ ] Top-ups simulate funding; there is no bank or card-network integration.
+- [ ] Raise overall test coverage (service layer is ~75%).
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, dependency rules, directory layout |
+| [docs/TRANSACTION_STRATEGY.md](docs/TRANSACTION_STRATEGY.md) | Concurrency and locking strategy |
+| [docs/logic/CORE_TRANSACTION.md](docs/logic/CORE_TRANSACTION.md) | Payment and refund algorithms |
+| [docs/logic/SECURITY_FLOW.md](docs/logic/SECURITY_FLOW.md) | Authentication and signature verification |
+| [docs/logic/REPORTING.md](docs/logic/REPORTING.md) | Dashboard and reporting queries |
+| [docs/api/openapi.yaml](docs/api/openapi.yaml) | OpenAPI 3 specification |
+| [docs/api/ERROR_CODES.md](docs/api/ERROR_CODES.md) | Error code registry |
+| [docs/api/WEBHOOK_SPEC.md](docs/api/WEBHOOK_SPEC.md) | Webhook payload and retry policy |
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md). Please report vulnerabilities privately as described
+in [SECURITY.md](SECURITY.md).
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+[MIT](LICENSE) © 2026 Nguyen Quoc Bao ([@VidIsWandering](https://github.com/VidIsWandering))

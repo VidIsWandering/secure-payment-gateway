@@ -131,7 +131,7 @@ def main():
     # TEST 5: Idempotency (Gửi NHIỀU request TRÙNG Reference ID)
     # ---------------------------------------------------------
     print_step("TEST: Idempotency (Tính Lũy Đẳng)")
-    print("Kịch bản: 1 hệ thống Merchant bị lag, bắn ra 5 requests đồng thời yêu cầu thanh toán CÙNG MỘT Order ID (reference_id).")
+    print("Kịch bản: 1 hệ thống Merchant bị lag, bắn ra 10 requests đồng thời yêu cầu thanh toán CÙNG MỘT Order ID (reference_id).")
     print("Mục tiêu: Phát hiện trùng lặp, chỉ xử lý transaction 1 lần duy nhất, các request còn lại phải bị từ chối (HTTP 409).")
     
     # Nạp thêm 20,000 VND
