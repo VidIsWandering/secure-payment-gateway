@@ -82,10 +82,13 @@ func main() {
 	hashSvc := service.NewArgon2HashService()
 	tokenSvc := service.NewJWTTokenService(cfg.JWT.Secret, cfg.JWT.Expiry, cfg.JWT.Issuer)
 
+	// Local (http://, localhost) webhook targets are for development only.
+	allowLocalWebhooks := cfg.Server.Mode != "release"
+
 	// Initialize business services
-	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
+	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor, allowLocalWebhooks)
 	webhookRepo := middleware.InstrumentWebhookRepository(pgStorage.NewWebhookRepository(pool))
-	webhookSvc := service.NewWebhookService(merchantRepo, webhookRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log)
+	webhookSvc := service.NewWebhookService(merchantRepo, webhookRepo, encSvc, sigSvc, service.NewWebhookHTTPClient(10*time.Second, allowLocalWebhooks), log)
 	paymentSvc := service.NewPaymentService(
 		txRepo,
 		walletRepo,
@@ -97,7 +100,7 @@ func main() {
 		log,
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
-	merchantSvc := service.NewMerchantService(merchantRepo, encSvc)
+	merchantSvc := service.NewMerchantService(merchantRepo, encSvc, allowLocalWebhooks)
 	auditRepo := pgStorage.NewAuditRepository(pool)
 	auditSvc := service.NewAuditService(auditRepo, log)
 

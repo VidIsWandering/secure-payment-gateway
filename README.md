@@ -28,7 +28,7 @@ even under concurrent traffic, network retries and replayed requests.**
 | 🛡️ **Replay protection** | ±60 s timestamp window + single-use nonces stored in Redis; fails closed if Redis is down |
 | 🔐 **Encryption at rest** | Wallet balances, amounts and merchant secret keys encrypted with AES-256-GCM |
 | 🔑 **Credentials** | Argon2id password hashing, JWT sessions for the dashboard, rotatable API keys |
-| 📣 **Webhooks** | Transactional outbox (survives restarts, never sent for rolled-back payments), signed payloads, backoff retries (15 s → 10 min), SSRF-safe URLs |
+| 📣 **Webhooks** | Transactional outbox (survives restarts, never sent for rolled-back payments), signed payloads, backoff retries (15 s → 10 min), SSRF protection at registration and connect time |
 | 🚦 **Rate limiting** | Redis-backed per-merchant limits per endpoint group |
 | 🧾 **Audit trail** | Every write operation recorded with actor, IP and action |
 | 📊 **Observability** | Prometheus metrics + pre-provisioned Grafana dashboard |

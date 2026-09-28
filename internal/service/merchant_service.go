@@ -14,18 +14,21 @@ import (
 )
 
 type merchantService struct {
-	merchantRepo ports.MerchantRepository
-	encSvc       ports.EncryptionService
+	merchantRepo       ports.MerchantRepository
+	encSvc             ports.EncryptionService
+	allowLocalWebhooks bool // development only: accept http:// and localhost webhook URLs
 }
 
 // NewMerchantService creates a new merchant management service.
 func NewMerchantService(
 	merchantRepo ports.MerchantRepository,
 	encSvc ports.EncryptionService,
+	allowLocalWebhooks bool,
 ) ports.MerchantManagementService {
 	return &merchantService{
-		merchantRepo: merchantRepo,
-		encSvc:       encSvc,
+		merchantRepo:       merchantRepo,
+		encSvc:             encSvc,
+		allowLocalWebhooks: allowLocalWebhooks,
 	}
 }
 
@@ -51,7 +54,7 @@ func (s *merchantService) GetProfile(ctx context.Context, merchantID uuid.UUID) 
 func (s *merchantService) UpdateWebhookURL(ctx context.Context, merchantID uuid.UUID, webhookURL *string) error {
 	// SSRF validation
 	if webhookURL != nil {
-		if err := ValidateWebhookURL(*webhookURL); err != nil {
+		if err := ValidateWebhookURL(*webhookURL, s.allowLocalWebhooks); err != nil {
 			return apperror.Validation(fmt.Sprintf("invalid webhook URL: %v", err))
 		}
 	}

@@ -35,7 +35,7 @@ func setupAuthService(t *testing.T) (
 	tokenSvc := mocks.NewMockTokenService(ctrl)
 	transactor := mocks.NewMockDBTransactor(ctrl)
 
-	svc := NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
+	svc := NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor, false)
 	return svc, merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor, ctrl
 }
 
