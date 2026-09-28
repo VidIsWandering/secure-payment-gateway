@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/rs/zerolog"
 )

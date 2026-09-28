@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"secure-payment-gateway/config"
+	"github.com/VidIsWandering/secure-payment-gateway/config"
 
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"

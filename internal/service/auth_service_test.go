@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/internal/core/ports/mocks"
-	"secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports/mocks"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

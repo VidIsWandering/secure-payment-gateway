@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"secure-payment-gateway/pkg/apperror"
-	"secure-payment-gateway/pkg/response"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

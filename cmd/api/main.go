@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"secure-payment-gateway/config"
-	httpHandler "secure-payment-gateway/internal/adapter/http/handler"
-	pgStorage "secure-payment-gateway/internal/adapter/storage/postgres"
-	redisStorage "secure-payment-gateway/internal/adapter/storage/redis"
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/internal/service"
-	"secure-payment-gateway/pkg/logger"
+	"github.com/VidIsWandering/secure-payment-gateway/config"
+	httpHandler "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/handler"
+	pgStorage "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/postgres"
+	redisStorage "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/redis"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/service"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/logger"
 )
 
 func main() {
@@ -111,22 +111,22 @@ func main() {
 
 	// Setup Gin router with all routes
 	router := httpHandler.SetupRouter(httpHandler.RouterDeps{
-		AuthSvc:        authSvc,
-		PaymentSvc:     paymentSvc,
-		ReportingSvc:   reportingSvc,
-		WebhookSvc:     webhookSvc,
-		MerchantRepo:   merchantRepo,
-		EncSvc:         encSvc,
-		SigSvc:         sigSvc,
-		NonceStore:     nonceStore,
-		TokenSvc:       tokenSvc,
-		RateLimitStore: rateLimitStore,
-		HealthCheckers: []ports.HealthChecker{pgHealth, redisHealth},
-		MerchantSvc:    merchantSvc,
-		AuditSvc:       auditSvc,
-		TxRepo:         txRepo,
-		Logger:         log,
-		ServerMode:     cfg.Server.Mode,
+		AuthSvc:                 authSvc,
+		PaymentSvc:              paymentSvc,
+		ReportingSvc:            reportingSvc,
+		WebhookSvc:              webhookSvc,
+		MerchantRepo:            merchantRepo,
+		EncSvc:                  encSvc,
+		SigSvc:                  sigSvc,
+		NonceStore:              nonceStore,
+		TokenSvc:                tokenSvc,
+		RateLimitStore:          rateLimitStore,
+		HealthCheckers:          []ports.HealthChecker{pgHealth, redisHealth},
+		MerchantSvc:             merchantSvc,
+		AuditSvc:                auditSvc,
+		TxRepo:                  txRepo,
+		Logger:                  log,
+		ServerMode:              cfg.Server.Mode,
 		RateLimitPayments:       cfg.RateLimit.Payments,
 		RateLimitPaymentsRefund: cfg.RateLimit.PaymentsRefund,
 	})

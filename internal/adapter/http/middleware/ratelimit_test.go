@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/adapter/http/middleware"
-	redisStore "secure-payment-gateway/internal/adapter/storage/redis"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/middleware"
+	redisStore "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/redis"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"

@@ -75,7 +75,7 @@ type LogConfig struct {
 // RateLimitConfig allows overriding default rate limits via environment.
 // Use SPG_RATELIMIT_PAYMENTS etc. Set to 0 to use built-in defaults.
 type RateLimitConfig struct {
-	Payments      int64 `mapstructure:"payments"`       // req/min for POST /payments (default: 100)
+	Payments       int64 `mapstructure:"payments"`        // req/min for POST /payments (default: 100)
 	PaymentsRefund int64 `mapstructure:"payments_refund"` // req/min for POST /payments/refund (default: 30)
 }
 
@@ -129,7 +129,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("aes.key", "")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.pretty", false)
-	v.SetDefault("ratelimit.payments", 0)       // 0 = use built-in default (100/min)
+	v.SetDefault("ratelimit.payments", 0)        // 0 = use built-in default (100/min)
 	v.SetDefault("ratelimit.payments_refund", 0) // 0 = use built-in default (30/min)
 
 	// File config

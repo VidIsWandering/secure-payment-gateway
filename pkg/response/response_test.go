@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

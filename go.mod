@@ -1,4 +1,4 @@
-module secure-payment-gateway
+module github.com/VidIsWandering/secure-payment-gateway
 
 go 1.25.14
 
