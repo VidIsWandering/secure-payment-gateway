@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: payment_gateway
     ports:
-      - "5435:5435"
+      - "5435:5432" # host 5435 avoids clashing with a local PostgreSQL
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/migrations/001_init_schema.up.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
@@ -97,7 +97,7 @@ services:
     image: grafana/grafana:11.1.0
     container_name: spg-grafana
     ports:
-      - "3005:3000"
+      - "3005:3000" # Grafana UI at http://localhost:3005
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
