@@ -9,7 +9,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         
         print("\n" + "="*50)
-        print("🔔 NHẬN ĐƯỢC WEBHOOK TỪ PAYMENT GATEWAY")
+        print("🔔 WEBHOOK RECEIVED FROM PAYMENT GATEWAY")
         print("="*50)
         print(f"Headers:\n{self.headers}")
         
@@ -30,13 +30,13 @@ def run(server_class=HTTPServer, handler_class=WebhookHandler, port=9000):
     # Bind on 0.0.0.0 to accept connections from Docker containers via host.docker.internal
     server_address = ('0.0.0.0', port)
     httpd = server_class(server_address, handler_class)
-    print(f"Bắt đầu lắng nghe Webhook tại http://0.0.0.0:{port}/webhook ...")
+    print(f"Listening for webhooks at http://0.0.0.0:{port}/webhook ...")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print("Đã dừng server.")
+    print("Server stopped.")
 
 if __name__ == '__main__':
     run()

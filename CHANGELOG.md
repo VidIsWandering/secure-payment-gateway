@@ -14,6 +14,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release pipeline**: publishing a GitHub release builds and pushes a multi-arch (amd64/arm64) image to `ghcr.io/vidiswandering/secure-payment-gateway` with SBOM and build-provenance attestation.
 
 ### Changed
+- **Demo scripts** print English output and check the actual responses: `demo_security.py` and `demo_concurrency.py` report ✅/❌ per scenario and exit non-zero on failure.
 - **Dockerfile** cross-compiles for the target platform (`TARGETOS`/`TARGETARCH`) and builds with `-trimpath`.
 - **Go 1.26**: minimum Go version is now 1.26; CI and the Docker build use Go 1.26.8, the runtime image uses Alpine 3.24. All Go modules and GitHub Actions updated (pgx held at v5.10.0 until pgxmock supports v5.11).
 
