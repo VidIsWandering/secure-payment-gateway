@@ -7,7 +7,6 @@ import time
 import uuid
 import requests
 import sys
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "http://localhost:8080/api/v1"
@@ -50,7 +49,7 @@ def get_credentials():
     return data["access_key"], data["secret_key"], jwt_token
 
 def send_payment(req_id, endpoint, payload_str, access_key, secret_key):
-    # Mỗi request gửi đi sẽ có Timestamp và Nonce riêng biệt
+    # Every request gets its own timestamp and nonce
     timestamp = str(int(time.time()))
     nonce = str(uuid.uuid4())
     sig = generate_signature("POST", endpoint, secret_key, timestamp, nonce, payload_str)
@@ -69,21 +68,24 @@ def send_payment(req_id, endpoint, payload_str, access_key, secret_key):
     except Exception as e:
         return req_id, 000, str(e)
 
+def get_balance(jwt_headers):
+    return requests.get(f"{BASE_URL}/wallets/balance", headers=jwt_headers).json()["data"]["balance"]
+
 def main():
-    print("Khởi tạo tài khoản Merchant với Số dư CHÍNH XÁC là: 10,000 VND...")
+    print("Creating a merchant whose wallet holds EXACTLY 10,000 VND...")
     access_key, secret_key, jwt_token = get_credentials()
     
     jwt_headers = {"Authorization": f"Bearer {jwt_token}"}
-    balance_resp = requests.get(f"{BASE_URL}/wallets/balance", headers=jwt_headers)
-    print(f"Số dư hiện tại: {balance_resp.json()['data']['balance']} VND")
+    print(f"Current balance: {get_balance(jwt_headers)} VND")
+    passed = []
     
     # ---------------------------------------------------------
-    # TEST 4: Race Condition (Concurrent Transactions)
+    # TEST 1: Race condition (concurrent debits)
     # ---------------------------------------------------------
-    print_step("TEST: Xử lý đồng thời (Race Condition) với Pessimistic Locking")
-    print("Kịch bản: Bắn ĐỒNG THỜI 10 requests cùng lúc, mỗi request là MỘT GIAO DỊCH KHÁC NHAU (Reference ID khác nhau) trừ 10,000 VND.")
-    print("Mục tiêu: Đảm bảo chỉ 1 request thành công, 9 cái còn lại phải thất bại (Insufficient Funds), số dư cuối cùng KO BAO GIỜ bị âm.")
-    print("Gửi 10 requests...")
+    print_step("TEST: Concurrent debits with pessimistic locking")
+    print("Scenario: fire 10 requests AT THE SAME TIME, each a DIFFERENT payment (different reference ID) of 10,000 VND.")
+    print("Goal: exactly 1 succeeds, the other 9 fail with insufficient funds, and the balance NEVER goes negative.")
+    print("Sending 10 requests...")
     
     futures = []
     
@@ -109,33 +111,32 @@ def main():
         idx, status, text = f.result()
         if status == 201:
             success_count += 1
-            print(f"Request #{idx}: Thành công! (Đã trừ tiền)")
+            print(f"Request #{idx}: succeeded (wallet debited)")
         else:
             fail_count += 1
-            # print(f"Request #{idx}: Thất bại! Status {status} - {text}")
             
-    print(f"\nThời gian chạy: {time.time() - start_time:.2f}s")
-    print(f"Tổng thành công: {success_count} / 10 | Tổng thất bại: {fail_count} / 10")
+    print(f"\nElapsed: {time.time() - start_time:.2f}s")
+    print(f"Succeeded: {success_count} / 10 | Failed: {fail_count} / 10")
     
-    # Kiểm tra số dư cuối
-    balance_resp = requests.get(f"{BASE_URL}/wallets/balance", headers=jwt_headers)
-    print(f"👉 SỐ DƯ CUỐI CÙNG: {balance_resp.json()['data']['balance']} VND")
-    if balance_resp.json()['data']['balance'] < 0:
-        print("❌ LỖI NGHIÊM TRỌNG: Số dư bị âm!!!")
+    balance = get_balance(jwt_headers)
+    print(f"👉 FINAL BALANCE: {balance} VND")
+    if success_count == 1 and balance == 0:
+        print("✅ SUCCESS: pessimistic locking serialised the debits — no overdraft.")
+        passed.append(True)
     else:
-        print("✅ SUCCESS: Pessimistic Locking hoạt động đúng!")
+        print("❌ FAILURE: expected exactly 1 successful debit and a final balance of 0.")
+        passed.append(False)
         
     time.sleep(2)
 
     # ---------------------------------------------------------
-    # TEST 5: Idempotency (Gửi NHIỀU request TRÙNG Reference ID)
+    # TEST 2: Idempotency (many requests with the SAME reference ID)
     # ---------------------------------------------------------
-    print_step("TEST: Idempotency (Tính Lũy Đẳng)")
-    print("Kịch bản: 1 hệ thống Merchant bị lag, bắn ra 10 requests đồng thời yêu cầu thanh toán CÙNG MỘT Order ID (reference_id).")
-    print("Mục tiêu: Phát hiện trùng lặp, chỉ xử lý transaction 1 lần duy nhất, các request còn lại phải bị từ chối (HTTP 409).")
+    print_step("TEST: Idempotency")
+    print("Scenario: a lagging merchant system fires 10 concurrent requests to pay the SAME order (reference_id).")
+    print("Goal: the order is charged exactly once; duplicates get the original result back or 409 Conflict.")
     
-    # Nạp thêm 20,000 VND
-    print("Nạp thêm 20,000 VND...")
+    print("Topping up another 20,000 VND...")
     requests.post(f"{BASE_URL}/wallets/topup", json={"amount": 20000, "currency": "VND"}, headers=jwt_headers)
     
     target_reference_id = f"IDEMPOTENCY-{uuid.uuid4()}"
@@ -145,12 +146,12 @@ def main():
             "currency": "VND"
     }
     payload_str_idem = json.dumps(p, separators=(',', ':'))
-    print(f"Gửi 10 requests đồng thời cùng chung Reference ID: {target_reference_id}")
+    print(f"Sending 10 concurrent requests sharing reference ID: {target_reference_id}")
     
     futures_idem = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         for i in range(10):
-            # Tất cả requests xài chung 1 payload_str_idem
+            # All requests share the same payload
             futures_idem.append(executor.submit(send_payment, i, "/api/v1/payments", payload_str_idem, access_key, secret_key))
             
     success_idem = 0
@@ -163,15 +164,18 @@ def main():
         else:
             fail_idem += 1
             
-    print(f"Tổng Created/Ok: {success_idem} / 10 | Tổng Conflict/Bỏ qua: {fail_idem} / 10")
+    print(f"Created/OK (original result replayed): {success_idem} / 10 | Conflict: {fail_idem} / 10")
     
-    # Kiểm tra số dư cuối
-    balance_resp = requests.get(f"{BASE_URL}/wallets/balance", headers=jwt_headers)
-    print(f"👉 SỐ DƯ SAU CÙNG: {balance_resp.json()['data']['balance']} VND")
-    if balance_resp.json()['data']['balance'] != 10000:
-        print(f"❌ LỖI NGHIÊM TRỌNG: Cảnh báo trừ tiền quá nhiều lần. Số tiền đúng là 10,000 VND.")
+    balance = get_balance(jwt_headers)
+    print(f"👉 FINAL BALANCE: {balance} VND")
+    if balance != 10000:
+        print("❌ FAILURE: the order was charged more than once. Expected balance: 10,000 VND.")
+        passed.append(False)
     else:
-        print("✅ SUCCESS: Idempotency hoạt động siêu hiệu quả! Giao dịch không bị lặp.")
+        print("✅ SUCCESS: idempotency held — the order was charged exactly once.")
+        passed.append(True)
+
+    sys.exit(0 if all(passed) else 1)
 
 if __name__ == "__main__":
     main()
