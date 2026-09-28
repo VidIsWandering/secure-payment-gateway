@@ -80,7 +80,10 @@ jobs:
           SPG_REDIS_PORT: 6379
           SPG_TEST_DATABASE_URL: postgres://spg:spg_secret@localhost:5432/spg_test?sslmode=disable
         run: |
-          go test ./... -race -coverprofile=coverage.out -covermode=atomic -count=1
+          # Measure application packages only (no generated mocks, main or test helpers),
+          # counting coverage from every test package including the integration tests.
+          COVERPKG=$(go list ./... | grep -v -e /mocks -e /cmd/ -e /tests/ | paste -sd, -)
+          go test ./... -race -coverpkg="$COVERPKG" -coverprofile=coverage.out -covermode=atomic -count=1
 
       - name: Upload coverage
         uses: actions/upload-artifact@v7
@@ -93,7 +96,8 @@ jobs:
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          THRESHOLD=40
+          echo "### Test coverage: ${COVERAGE}%" >> "$GITHUB_STEP_SUMMARY"
+          THRESHOLD=75
           if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
             echo "::error::Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
             exit 1

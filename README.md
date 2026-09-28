@@ -269,7 +269,8 @@ make coverage    # HTML coverage report
 make lint        # golangci-lint v2
 ```
 
-The suite covers services, handlers, middleware and DTO validation; PostgreSQL repositories
+Coverage is ~80% of application code, and CI fails below 75%. The suite covers services,
+handlers, middleware and DTO validation; PostgreSQL repositories
 (pgxmock); Redis stores (miniredis); end-to-end integration tests on in-memory repositories;
 and concurrency tests (100 concurrent payments, idempotency under race). CI runs lint, tests
 with `-race`, a coverage gate, `govulncheck`, secret scanning and a Docker build on every
@@ -338,7 +339,8 @@ certified payment processor. Known gaps:
 - [x] ~~Migrations were applied with `psql`~~ — versioned with golang-migrate, embedded in the
       binary and applied at startup.
 - [ ] Top-ups simulate funding; there is no bank or card-network integration.
-- [ ] Raise overall test coverage (service layer is ~75%).
+- [x] ~~Raise test coverage~~ — ~80% of application code (generated mocks excluded,
+      integration tests included); CI enforces a 75% minimum.
 
 ## Documentation
 

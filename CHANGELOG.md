@@ -6,6 +6,23 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Transactional webhook outbox**: webhooks are written to `webhook_delivery_logs` in the same DB transaction as the payment, refund or top-up, and delivered by a background dispatcher (`FOR UPDATE SKIP LOCKED` + lease, safe with multiple replicas). Pending webhooks survive restarts, and deliveries carry an `X-Webhook-Id` header for de-duplication.
+- **Versioned migrations** with golang-migrate: migrations are embedded in the binary and applied at startup (`SPG_DATABASE_AUTO_MIGRATE`, default `true`); `make migrate-up|down|version|create`. Existing databases created by the old init script are adopted at version 1 without data changes. CI runs the migrations against a real PostgreSQL.
+- **CodeQL** code scanning (Go, JavaScript, GitHub Actions) with the `security-extended` query suite.
+- **Release pipeline**: publishing a GitHub release builds and pushes a multi-arch (amd64/arm64) image to `ghcr.io/vidiswandering/secure-payment-gateway` with SBOM and build-provenance attestation.
+
+### Changed
+- **Coverage ~80%** (was reported as ~45%): new tests for merchant and payment-status handlers, CORS, SSRF validation, repositories, health checks and the webhook outbox. Coverage is now measured over application packages with `-coverpkg` (mocks and `main` excluded, integration tests counted); the CI gate is raised from 40% to 75%.
+- **Demo scripts** print English output and check the actual responses: `demo_security.py` and `demo_concurrency.py` report ✅/❌ per scenario and exit non-zero on failure.
+- **Dockerfile** cross-compiles for the target platform (`TARGETOS`/`TARGETARCH`) and builds with `-trimpath`.
+- **Go 1.26**: minimum Go version is now 1.26; CI and the Docker build use Go 1.26.8, the runtime image uses Alpine 3.24. All Go modules and GitHub Actions updated (pgx held at v5.10.0 until pgxmock supports v5.11).
+
+### Removed
+- The unused `RequestTimeout` middleware: it was never registered, raced on the Gin context and reused error code `SYS_004`. Server-level read/write timeouts remain in place.
+- `db/schema.sql`, which had drifted from the migrations (it still used `DECIMAL` amounts and lacked unique constraints). `db/migrations/` is the single source of truth.
+- The PostgreSQL `docker-entrypoint-initdb.d` mount in docker-compose; the API now creates the schema.
+
 ### Fixed
 - **Duplicate webhooks on idempotent replays**: handlers used to enqueue a webhook even when the payment service returned a cached result.
 - **Lost webhooks**: a crash or restart after a payment committed but before its in-process delivery finished dropped the webhook; the outbox persists it atomically with the payment.
@@ -16,22 +33,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Broader reserved-address blocking**: `0.0.0.0/8` (reaches localhost on Linux), CGNAT `100.64.0.0/10`, multicast and other reserved ranges are rejected in addition to RFC 1918, loopback and link-local.
 - **CORS** no longer sends `Access-Control-Allow-Credentials: true` for arbitrary origins; the API authenticates with headers, not cookies.
 - **Replay protection fails closed**: if the Redis nonce store is unavailable, signed requests are rejected with `503 SYS_004` instead of being accepted without replay protection. Opt out with `SPG_SECURITY_NONCE_FAIL_OPEN=true`.
-
-### Added
-- **Transactional webhook outbox**: webhooks are written to `webhook_delivery_logs` in the same DB transaction as the payment, refund or top-up, and delivered by a background dispatcher (`FOR UPDATE SKIP LOCKED` + lease, safe with multiple replicas). Pending webhooks survive restarts, and deliveries carry an `X-Webhook-Id` header for de-duplication.
-- **Versioned migrations** with golang-migrate: migrations are embedded in the binary and applied at startup (`SPG_DATABASE_AUTO_MIGRATE`, default `true`); `make migrate-up|down|version|create`. Existing databases created by the old init script are adopted at version 1 without data changes. CI runs the migrations against a real PostgreSQL.
-- **CodeQL** code scanning (Go, JavaScript, GitHub Actions) with the `security-extended` query suite.
-- **Release pipeline**: publishing a GitHub release builds and pushes a multi-arch (amd64/arm64) image to `ghcr.io/vidiswandering/secure-payment-gateway` with SBOM and build-provenance attestation.
-
-### Removed
-- The unused `RequestTimeout` middleware: it was never registered, raced on the Gin context and reused error code `SYS_004`. Server-level read/write timeouts remain in place.
-- `db/schema.sql`, which had drifted from the migrations (it still used `DECIMAL` amounts and lacked unique constraints). `db/migrations/` is the single source of truth.
-- The PostgreSQL `docker-entrypoint-initdb.d` mount in docker-compose; the API now creates the schema.
-
-### Changed
-- **Demo scripts** print English output and check the actual responses: `demo_security.py` and `demo_concurrency.py` report ✅/❌ per scenario and exit non-zero on failure.
-- **Dockerfile** cross-compiles for the target platform (`TARGETOS`/`TARGETARCH`) and builds with `-trimpath`.
-- **Go 1.26**: minimum Go version is now 1.26; CI and the Docker build use Go 1.26.8, the runtime image uses Alpine 3.24. All Go modules and GitHub Actions updated (pgx held at v5.10.0 until pgxmock supports v5.11).
 
 ## [0.2.0] - 2026-09-28
 

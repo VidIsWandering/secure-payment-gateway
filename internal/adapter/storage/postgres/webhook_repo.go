@@ -9,15 +9,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type webhookRepo struct {
-	pool *pgxpool.Pool
+	pool Pool
 }
 
 // NewWebhookRepository creates a PostgreSQL-backed WebhookRepository.
-func NewWebhookRepository(pool *pgxpool.Pool) ports.WebhookRepository {
+func NewWebhookRepository(pool Pool) ports.WebhookRepository {
 	return &webhookRepo{pool: pool}
 }
 

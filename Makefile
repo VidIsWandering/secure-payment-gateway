@@ -21,8 +21,10 @@ test-v:
 	go test ./... -race -count=1 -v
 
 # Coverage
+COVERPKG = $(shell go list ./... | grep -v -e /mocks -e /cmd/ -e /tests/ | paste -sd, -)
+
 coverage:
-	go test ./... -race -coverprofile=coverage.out -covermode=atomic -count=1
+	go test ./... -race -coverpkg=$(COVERPKG) -coverprofile=coverage.out -covermode=atomic -count=1
 	go tool cover -func=coverage.out | tail -1
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
