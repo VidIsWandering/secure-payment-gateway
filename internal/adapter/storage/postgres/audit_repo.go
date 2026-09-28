@@ -5,16 +5,14 @@ import (
 
 	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
 	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type auditRepo struct {
-	pool *pgxpool.Pool
+	pool Pool
 }
 
 // NewAuditRepository creates a PostgreSQL-backed AuditRepository.
-func NewAuditRepository(pool *pgxpool.Pool) ports.AuditRepository {
+func NewAuditRepository(pool Pool) ports.AuditRepository {
 	return &auditRepo{pool: pool}
 }
 
