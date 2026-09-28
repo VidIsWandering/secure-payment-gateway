@@ -57,6 +57,7 @@ func TestSecurityErrors(t *testing.T) {
 		{"InvalidSignature", ErrInvalidSignature(), "SEC_002", 401},
 		{"TimestampExpired", ErrTimestampExpired(), "SEC_003", 403},
 		{"NonceUsed", ErrNonceUsed(), "SEC_004", 403},
+		{"SecurityStoreUnavailable", ErrSecurityStoreUnavailable(errors.New("redis down")), "SYS_004", 503},
 	}
 
 	for _, tt := range tests {

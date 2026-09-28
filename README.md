@@ -24,7 +24,7 @@ even under concurrent traffic, network retries and replayed requests.**
 | 💸 **Payments, refunds & top-ups** | ACID transactions with `SELECT ... FOR UPDATE` pessimistic locking on the wallet row |
 | 🔁 **Idempotency** | Two layers — Redis fast path, PostgreSQL `UNIQUE(merchant_id, reference_id)` as the source of truth |
 | ✍️ **Signed requests** | HMAC-SHA256 over `METHOD\|PATH\|TIMESTAMP\|NONCE\|BODY`, constant-time verification |
-| 🛡️ **Replay protection** | ±60 s timestamp window + single-use nonces stored in Redis |
+| 🛡️ **Replay protection** | ±60 s timestamp window + single-use nonces stored in Redis; fails closed if Redis is down |
 | 🔐 **Encryption at rest** | Wallet balances, amounts and merchant secret keys encrypted with AES-256-GCM |
 | 🔑 **Credentials** | Argon2id password hashing, JWT sessions for the dashboard, rotatable API keys |
 | 📣 **Webhooks** | Signed payloads, exponential-backoff retries (15 s → 10 min), SSRF-safe URL validation, delivery log |
@@ -238,6 +238,7 @@ variable.
 | `SPG_LOG_PRETTY` | `false` | Human-readable logs (development) |
 | `SPG_RATELIMIT_PAYMENTS` | `0` | Override payments limit (req/min, `0` = default) |
 | `SPG_RATELIMIT_PAYMENTS_REFUND` | `0` | Override refunds limit (req/min, `0` = default) |
+| `SPG_SECURITY_NONCE_FAIL_OPEN` | `false` | Accept signed requests while Redis is down (disables replay protection) |
 
 The application refuses to start if the required secrets are missing or malformed.
 
@@ -310,8 +311,9 @@ certified payment processor. Known gaps:
 
 - [ ] Webhook retries run in-process — pending retries are lost on restart (planned:
       transactional outbox + worker).
-- [ ] Nonce and rate-limit checks **fail open** if Redis is unavailable (planned:
-      configurable fail-closed mode).
+- [x] ~~Replay protection failed open when Redis was unavailable~~ — now fails closed
+      (`SYS_004`) unless `SPG_SECURITY_NONCE_FAIL_OPEN=true`. Rate limiting still fails open
+      by design, favouring availability.
 - [ ] JWT uses a shared HS256 secret without refresh tokens or revocation.
 - [ ] Migrations are applied with `psql`; no versioned migration tool yet.
 - [ ] Top-ups simulate funding; there is no bank or card-network integration.

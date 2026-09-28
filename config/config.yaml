@@ -28,6 +28,9 @@ jwt:
 aes:
   key: "" # 64-char hex string (32 bytes). Set via SPG_AES_KEY env var.
 
+security:
+  nonce_fail_open: false # true = accept signed requests when Redis is down (disables replay protection)
+
 log:
   level: "info" # debug | info | warn | error
   pretty: false # true for dev console output

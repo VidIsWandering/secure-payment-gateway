@@ -130,6 +130,7 @@ func main() {
 		ServerMode:              cfg.Server.Mode,
 		RateLimitPayments:       cfg.RateLimit.Payments,
 		RateLimitPaymentsRefund: cfg.RateLimit.PaymentsRefund,
+		NonceFailOpen:           cfg.Security.NonceFailOpen,
 	})
 
 	// HTTP Server with graceful shutdown

@@ -66,3 +66,4 @@ These errors indicate internal failures.
 | `SYS_001` | 500         | Internal Database Error    | Contact Support. Do not retry immediately.                  |
 | `SYS_002` | 503         | Lock Acquisition Timeout   | High concurrency on wallet. Retry with Exponential Backoff. |
 | `SYS_003` | 500         | Encryption Service Failure | AES key missing or rotation error.                          |
+| `SYS_004` | 503         | Security Check Unavailable | Replay-protection store is down. Retry with a **new** nonce. |

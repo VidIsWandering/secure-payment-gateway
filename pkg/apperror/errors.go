@@ -129,6 +129,12 @@ func ErrEncryptionFailure(err error) *AppError {
 	return Wrap("SYS_003", "Encryption service failure", http.StatusInternalServerError, err)
 }
 
+// ErrSecurityStoreUnavailable is returned when a security check (e.g. the
+// replay-protection nonce store) cannot be performed and the gateway fails closed.
+func ErrSecurityStoreUnavailable(err error) *AppError {
+	return Wrap("SYS_004", "Security check temporarily unavailable", http.StatusServiceUnavailable, err)
+}
+
 // InternalError wraps an internal error as a SYS_001 error.
 func InternalError(err error) *AppError {
 	return Wrap("SYS_001", "Internal server error", http.StatusInternalServerError, err)
