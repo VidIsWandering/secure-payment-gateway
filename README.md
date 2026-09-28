@@ -6,6 +6,7 @@
 even under concurrent traffic, network retries and replayed requests.**
 
 [![CI](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/codeql.yml/badge.svg)](https://github.com/VidIsWandering/secure-payment-gateway/actions/workflows/codeql.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/VidIsWandering/secure-payment-gateway)](go.mod)
 [![Go Report Card](https://goreportcard.com/badge/github.com/VidIsWandering/secure-payment-gateway)](https://goreportcard.com/report/github.com/VidIsWandering/secure-payment-gateway)
 [![Release](https://img.shields.io/github/v/release/VidIsWandering/secure-payment-gateway)](https://github.com/VidIsWandering/secure-payment-gateway/releases)
@@ -134,6 +135,17 @@ run the [demo scripts](#demo-scripts).
 > `sslmode=disable`). Override `JWT_SECRET` / `AES_KEY` and harden these before exposing the
 > stack anywhere.
 
+### Use the published image
+
+Every release publishes a multi-arch (amd64/arm64) image with an SBOM and signed build
+provenance to the GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/vidiswandering/secure-payment-gateway:latest
+gh attestation verify oci://ghcr.io/vidiswandering/secure-payment-gateway:latest \
+  --owner VidIsWandering   # optional: verify provenance
+```
+
 ### Run the API from source
 
 ```bash
@@ -254,7 +266,8 @@ The suite covers services, handlers, middleware and DTO validation; PostgreSQL r
 (pgxmock); Redis stores (miniredis); end-to-end integration tests on in-memory repositories;
 and concurrency tests (100 concurrent payments, idempotency under race). CI runs lint, tests
 with `-race`, a coverage gate, `govulncheck`, secret scanning and a Docker build on every
-push.
+push; CodeQL (`security-extended`) scans Go, JavaScript and workflow files weekly and on
+every pull request.
 
 ## Load Testing & Benchmarks
 

@@ -46,4 +46,4 @@ Out of scope:
   (e.g. Grafana `admin/admin`, sample `SPG_AES_KEY`) — these are for local use only
 - Denial of service through volumetric traffic
 - Vulnerabilities in third-party dependencies without a demonstrated impact on this project
-  (these are tracked automatically by Dependabot and `govulncheck`)
+  (these are tracked automatically by Dependabot, `govulncheck` and CodeQL)
