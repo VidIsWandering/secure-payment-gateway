@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- **Replay protection fails closed**: if the Redis nonce store is unavailable, signed requests are rejected with `503 SYS_004` instead of being accepted without replay protection. Opt out with `SPG_SECURITY_NONCE_FAIL_OPEN=true`.
+
+### Changed
+- **Go 1.26**: minimum Go version is now 1.26; CI and the Docker build use Go 1.26.8, the runtime image uses Alpine 3.24. All Go modules and GitHub Actions updated (pgx held at v5.10.0 until pgxmock supports v5.11).
+
 ## [0.2.0] - 2026-09-28
 
 ### Added

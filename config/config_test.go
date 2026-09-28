@@ -46,6 +46,8 @@ func TestLoad_Defaults(t *testing.T) {
 
 	assert.Equal(t, "info", cfg.Log.Level)
 	assert.False(t, cfg.Log.Pretty)
+
+	assert.False(t, cfg.Security.NonceFailOpen, "replay protection must fail closed by default")
 }
 
 func TestLoad_FromYAMLFile(t *testing.T) {

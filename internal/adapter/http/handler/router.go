@@ -29,6 +29,7 @@ type RouterDeps struct {
 	ServerMode              string // "debug", "release", "test"
 	RateLimitPayments       int64  // 0 = use default (100/min)
 	RateLimitPaymentsRefund int64  // 0 = use default (30/min)
+	NonceFailOpen           bool   // accept signed requests when the nonce store is down
 }
 
 // SetupRouter initialises the Gin engine with all routes and middleware.
@@ -99,7 +100,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	}
 
 	// --- HMAC-authenticated routes (merchant API) ---
-	hmacAuth := middleware.HMACAuth(deps.MerchantRepo, deps.EncSvc, deps.SigSvc, deps.NonceStore, deps.Logger)
+	hmacAuth := middleware.HMACAuth(deps.MerchantRepo, deps.EncSvc, deps.SigSvc, deps.NonceStore, deps.NonceFailOpen, deps.Logger)
 	paymentHandler := NewPaymentHandler(deps.PaymentSvc, deps.WebhookSvc, deps.TxRepo)
 	payments := v1.Group("/payments", hmacAuth)
 	{

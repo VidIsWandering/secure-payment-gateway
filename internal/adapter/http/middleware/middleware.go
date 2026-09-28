@@ -38,11 +38,16 @@ const (
 
 // HMACAuth creates a middleware that verifies HMAC-SHA256 signatures.
 // Pipeline: Check timestamp -> Check nonce -> Verify signature.
+//
+// If the nonce store is unavailable the request is rejected (fail closed),
+// because accepting it would disable replay protection. Set nonceFailOpen to
+// trade that protection for availability.
 func HMACAuth(
 	merchantRepo ports.MerchantRepository,
 	encSvc ports.EncryptionService,
 	sigSvc ports.SignatureService,
 	nonceStore ports.NonceStore,
+	nonceFailOpen bool,
 	log zerolog.Logger,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -91,9 +96,15 @@ func HMACAuth(
 		}
 
 		isNew, err := nonceStore.CheckAndSet(c.Request.Context(), merchant.ID.String(), nonce, nonceTTL)
-		if err != nil {
-			log.Warn().Err(err).Msg("nonce store error, allowing request")
-		} else if !isNew {
+		switch {
+		case err != nil && nonceFailOpen:
+			log.Warn().Err(err).Msg("nonce store error, allowing request (fail-open)")
+		case err != nil:
+			log.Error().Err(err).Msg("nonce store error, rejecting request (fail-closed)")
+			response.Error(c, apperror.ErrSecurityStoreUnavailable(err))
+			c.Abort()
+			return
+		case !isNew:
 			response.Error(c, apperror.ErrNonceUsed())
 			c.Abort()
 			return

@@ -17,6 +17,7 @@ type Config struct {
 	AES       AESConfig       `mapstructure:"aes"`
 	Log       LogConfig       `mapstructure:"log"`
 	RateLimit RateLimitConfig `mapstructure:"ratelimit"`
+	Security  SecurityConfig  `mapstructure:"security"`
 }
 
 type ServerConfig struct {
@@ -79,6 +80,14 @@ type RateLimitConfig struct {
 	PaymentsRefund int64 `mapstructure:"payments_refund"` // req/min for POST /payments/refund (default: 30)
 }
 
+// SecurityConfig controls how security checks behave when a dependency fails.
+type SecurityConfig struct {
+	// NonceFailOpen accepts signed requests when the Redis nonce store is
+	// unavailable. Default false: such requests are rejected with SYS_004,
+	// because accepting them would disable replay protection.
+	NonceFailOpen bool `mapstructure:"nonce_fail_open"`
+}
+
 // Validate checks required configuration fields.
 func (cfg *Config) Validate() error {
 	if len(cfg.JWT.Secret) < 32 {
@@ -131,6 +140,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("log.pretty", false)
 	v.SetDefault("ratelimit.payments", 0)        // 0 = use built-in default (100/min)
 	v.SetDefault("ratelimit.payments_refund", 0) // 0 = use built-in default (30/min)
+	v.SetDefault("security.nonce_fail_open", false)
 
 	// File config
 	if path != "" {
