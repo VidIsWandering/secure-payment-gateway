@@ -90,6 +90,8 @@ func (h *PaymentHandler) ProcessPayment(c *gin.Context) {
 		return
 	}
 
+	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
+
 	// Trigger async webhook notification
 	if h.webhookSvc != nil {
 		_ = h.webhookSvc.EnqueueWebhook(c.Request.Context(), result)
@@ -125,6 +127,8 @@ func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
+
+	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
 
 	// Trigger async webhook notification
 	if h.webhookSvc != nil {

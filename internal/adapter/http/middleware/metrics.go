@@ -1,8 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"strconv"
 	"time"
+
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,7 +49,7 @@ var (
 	webhookDeliveriesTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "spg_webhook_deliveries_total",
-			Help: "Total number of webhook delivery attempts",
+			Help: "Total number of webhook deliveries by final outcome",
 		},
 		[]string{"status"},
 	)
@@ -79,6 +83,25 @@ func RecordTransaction(txType, status string) {
 // RecordWebhookDelivery records a webhook delivery metric.
 func RecordWebhookDelivery(status string) {
 	webhookDeliveriesTotal.WithLabelValues(status).Inc()
+}
+
+// InstrumentWebhookRepository wraps a WebhookRepository so that every delivery
+// reaching a terminal status (DELIVERED/FAILED) is counted in
+// spg_webhook_deliveries_total. Keeps metrics out of the service layer.
+func InstrumentWebhookRepository(repo ports.WebhookRepository) ports.WebhookRepository {
+	return &instrumentedWebhookRepo{WebhookRepository: repo}
+}
+
+type instrumentedWebhookRepo struct {
+	ports.WebhookRepository
+}
+
+func (r *instrumentedWebhookRepo) Update(ctx context.Context, log *domain.WebhookDeliveryLog) error {
+	err := r.WebhookRepository.Update(ctx, log)
+	if log.Status != domain.WebhookStatusPending {
+		RecordWebhookDelivery(string(log.Status))
+	}
+	return err
 }
 
 // normalizePath returns a sanitized path pattern to prevent high-cardinality labels.

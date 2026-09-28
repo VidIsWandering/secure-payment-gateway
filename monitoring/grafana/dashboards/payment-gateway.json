@@ -12,7 +12,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
-        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 100}, {"color": "red", "value": 500}] } },
+        "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "thresholds": { "mode": "absolute", "steps": [{"color": "blue", "value": null}] } },
         "overrides": []
       },
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
@@ -46,7 +46,7 @@
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Error Rate (5xx)",
       "type": "stat",
-      "targets": [{ "expr": "sum(rate(spg_http_requests_total{status=~\"5..\"}[5m]))", "legendFormat": "", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(spg_http_requests_total{status=~\"5..\"}[5m])) or vector(0)", "legendFormat": "", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },

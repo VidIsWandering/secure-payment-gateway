@@ -12,6 +12,7 @@ import (
 
 	"github.com/VidIsWandering/secure-payment-gateway/config"
 	httpHandler "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/handler"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/middleware"
 	pgStorage "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/postgres"
 	redisStorage "github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/redis"
 	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
@@ -85,7 +86,7 @@ func main() {
 		log,
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
-	webhookRepo := pgStorage.NewWebhookRepository(pool)
+	webhookRepo := middleware.InstrumentWebhookRepository(pgStorage.NewWebhookRepository(pool))
 
 	// WaitGroup for webhook goroutines — used for graceful shutdown
 	var webhookWg sync.WaitGroup

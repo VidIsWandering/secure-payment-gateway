@@ -72,6 +72,8 @@ func (h *WalletHandler) Topup(c *gin.Context) {
 		return
 	}
 
+	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
+
 	// Trigger async webhook notification
 	if h.webhookSvc != nil {
 		_ = h.webhookSvc.EnqueueWebhook(c.Request.Context(), result)
