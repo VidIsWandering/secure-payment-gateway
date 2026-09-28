@@ -13,6 +13,7 @@ database:
   max_conns: 20
   min_conns: 5
   conn_max_lifetime: "30m"
+  auto_migrate: true # apply db/migrations at startup (golang-migrate)
 
 redis:
   host: "localhost"

@@ -18,7 +18,7 @@ Resolves/Fixes #IssueNumber
 ## Database Schema Changes
 
 - [ ] Does this PR alter the database schema?
-  - If yes, verify `migrate-up` succeeded and migrations are stored properly in `db/migrations/`. 
+  - If yes, add a new `make migrate-create` migration (with a matching `down`) and verify `make migrate-up` / `make migrate-down` work.
   - Mention any `FOR UPDATE` table locks introduced in this change for Transaction safety.
 
 ## Checklist

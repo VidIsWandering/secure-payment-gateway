@@ -38,6 +38,15 @@ func main() {
 
 	ctx := context.Background()
 
+	// Apply pending schema migrations (embedded in the binary)
+	if cfg.Database.AutoMigrate {
+		version, err := pgStorage.Migrate(cfg.Database.DSN())
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to apply database migrations")
+		}
+		log.Info().Uint("schema_version", version).Msg("Database schema up to date")
+	}
+
 	// Initialize PostgreSQL pool
 	pool, err := pgStorage.NewPool(ctx, cfg.Database, log)
 	if err != nil {

@@ -55,7 +55,7 @@ def main():
     secret_key = data["secret_key"]
     merchant_id = data["merchant_id"]
     
-    print(f"✅ Registered successfuly!")
+    print(f"✅ Registered successfully!")
     print(f"Merchant ID: {merchant_id}")
     print(f"Access Key:  {access_key}")
     print(f"Secret Key:  {secret_key}")

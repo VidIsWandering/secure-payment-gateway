@@ -127,7 +127,7 @@ docker compose up -d
 | Grafana | http://localhost:3005 (`admin` / `admin`) |
 | Prometheus | http://localhost:9090 |
 
-The database schema is applied automatically on first start. To see the gateway in action,
+The API applies the versioned database migrations automatically on startup. To see the gateway in action,
 run the [demo scripts](#demo-scripts).
 
 > [!NOTE]
@@ -157,8 +157,13 @@ cp .env.example .env
 #   SPG_AES_KEY=$(openssl rand -hex 32)
 set -a && source .env && set +a
 
-make run          # or: go run ./cmd/api
+make run          # or: go run ./cmd/api — applies pending migrations on startup
 make build        # static binary in bin/spg-api
+
+# Manage migrations explicitly (golang-migrate)
+export DATABASE_URL="postgres://postgres:postgres@localhost:5435/payment_gateway?sslmode=disable"
+make migrate-version
+make migrate-create name=add_payouts
 ```
 
 ## Request Signing
@@ -244,6 +249,7 @@ variable.
 | `SPG_DATABASE_USER` / `_PASSWORD` / `_DBNAME` | `postgres` / `postgres` / `payment_gateway` | PostgreSQL credentials |
 | `SPG_DATABASE_SSLMODE` | `disable` | PostgreSQL SSL mode |
 | `SPG_DATABASE_MAX_CONNS` | `20` | Connection pool size |
+| `SPG_DATABASE_AUTO_MIGRATE` | `true` | Apply embedded migrations at startup |
 | `SPG_REDIS_HOST` / `_PORT` | `localhost` / `6379` | Redis address |
 | `SPG_JWT_EXPIRY` | `24h` | JWT lifetime |
 | `SPG_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
@@ -328,7 +334,8 @@ certified payment processor. Known gaps:
       (`SYS_004`) unless `SPG_SECURITY_NONCE_FAIL_OPEN=true`. Rate limiting still fails open
       by design, favouring availability.
 - [ ] JWT uses a shared HS256 secret without refresh tokens or revocation.
-- [ ] Migrations are applied with `psql`; no versioned migration tool yet.
+- [x] ~~Migrations were applied with `psql`~~ — versioned with golang-migrate, embedded in the
+      binary and applied at startup.
 - [ ] Top-ups simulate funding; there is no bank or card-network integration.
 - [ ] Raise overall test coverage (service layer is ~75%).
 
