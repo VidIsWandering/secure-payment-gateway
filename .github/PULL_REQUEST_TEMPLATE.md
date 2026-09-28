@@ -23,9 +23,9 @@ Resolves/Fixes #IssueNumber
 
 ## Checklist
 
-- [ ] My code follows the Clean Architecture structure denoted in `PROJECT_STRUCTURE.md`.
+- [ ] My code follows the Clean Architecture structure described in `docs/ARCHITECTURE.md`.
 - [ ] Core business layer (`internal/core`) does not import external HTTP/Storage dependencies.
-- [ ] I have executed tests using `make test`. All local tests passed.
+- [ ] I have run `make lint` and `make test`. All checks pass locally.
 - [ ] My code respects the high concurrency locking logic required for Wallet adjustments.
 - [ ] I have provided test coverage for any new or modified Logic in `internal/service`.
 
