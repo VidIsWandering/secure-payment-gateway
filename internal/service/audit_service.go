@@ -21,7 +21,9 @@ func NewAuditService(repo ports.AuditRepository, log zerolog.Logger) ports.Audit
 }
 
 // Log records an audit entry asynchronously (fire-and-forget).
+// The write is detached from request cancellation so it outlives the response.
 func (s *auditService) Log(ctx context.Context, entry *domain.AuditLog) {
+	ctx = context.WithoutCancel(ctx)
 	go func() {
 		s.log.Info().
 			Str("action", string(entry.Action)).
@@ -31,7 +33,7 @@ func (s *auditService) Log(ctx context.Context, entry *domain.AuditLog) {
 			Msg("audit")
 
 		if s.repo != nil {
-			if err := s.repo.Create(context.Background(), entry); err != nil {
+			if err := s.repo.Create(ctx, entry); err != nil {
 				s.log.Warn().Err(err).Str("action", string(entry.Action)).Msg("failed to persist audit log")
 			}
 		}
