@@ -1,5 +1,5 @@
 # ---- Build Stage ----
-FROM golang:1.26.8-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.8-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -12,12 +12,16 @@ RUN go mod download
 # Copy source
 COPY . .
 
-# Build static binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /app/server ./cmd/api
+# Build static binary (cross-compiled for the target platform)
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath -ldflags="-s -w" -o /app/server ./cmd/api
 
 # ---- Runtime Stage ----
 FROM alpine:3.24
+
+LABEL org.opencontainers.image.source="https://github.com/VidIsWandering/secure-payment-gateway"
 
 RUN apk add --no-cache ca-certificates tzdata
 
