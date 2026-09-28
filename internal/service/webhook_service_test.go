@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports/mocks"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports/mocks"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"

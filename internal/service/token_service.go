@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

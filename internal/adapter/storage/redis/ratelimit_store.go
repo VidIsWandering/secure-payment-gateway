@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	goredis "github.com/redis/go-redis/v9"
 )

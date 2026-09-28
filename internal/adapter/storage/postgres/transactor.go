@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 
-	"secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 
 	"github.com/jackc/pgx/v5"
 )

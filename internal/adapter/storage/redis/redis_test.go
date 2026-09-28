@@ -3,7 +3,7 @@ package redis
 import (
 	"testing"
 
-	"secure-payment-gateway/config"
+	"github.com/VidIsWandering/secure-payment-gateway/config"
 
 	"github.com/stretchr/testify/assert"
 )

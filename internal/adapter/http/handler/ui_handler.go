@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/VidIsWandering/secure-payment-gateway/web"
 	"github.com/gin-gonic/gin"
-	"secure-payment-gateway/web"
 )
 
 // UIHandler is responsible for serving the frontend UI files
@@ -27,7 +27,7 @@ func (h *UIHandler) RegisterRoutes(r *gin.Engine) {
 			r.StaticFS("/public", http.Dir("web/public"))
 			r.StaticFS("/css", http.Dir("web/css"))
 			r.StaticFS("/js", http.Dir("web/js"))
-			
+
 			// Pages
 			r.GET("/", func(c *gin.Context) { c.File("web/pages/index.html") })
 			r.GET("/login", func(c *gin.Context) { c.File("web/pages/auth/login.html") })

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/adapter/storage/redis"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/storage/redis"
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"

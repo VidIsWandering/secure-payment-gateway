@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"secure-payment-gateway/internal/adapter/http/dto"
-	"secure-payment-gateway/internal/core/domain"
-	"secure-payment-gateway/internal/core/ports"
-	"secure-payment-gateway/internal/core/ports/mocks"
-	"secure-payment-gateway/pkg/apperror"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/adapter/http/dto"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
+	"github.com/VidIsWandering/secure-payment-gateway/internal/core/ports/mocks"
+	"github.com/VidIsWandering/secure-payment-gateway/pkg/apperror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
