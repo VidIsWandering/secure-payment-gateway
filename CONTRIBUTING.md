@@ -7,7 +7,7 @@ First off, thank you for considering contributing to the Secure Payment Gateway!
 ### 1. Prerequisites
 
 Before you start, make sure you have installed:
-- Go 1.25+
+- Go 1.26+
 - Docker and Docker Compose
 - Make
 - [golangci-lint](https://golangci-lint.run/welcome/install/) v2
