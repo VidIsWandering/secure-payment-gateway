@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -85,6 +84,8 @@ func main() {
 
 	// Initialize business services
 	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
+	webhookRepo := middleware.InstrumentWebhookRepository(pgStorage.NewWebhookRepository(pool))
+	webhookSvc := service.NewWebhookService(merchantRepo, webhookRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log)
 	paymentSvc := service.NewPaymentService(
 		txRepo,
 		walletRepo,
@@ -92,14 +93,10 @@ func main() {
 		idempotencyCache,
 		encSvc,
 		transactor,
+		webhookSvc,
 		log,
 	)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
-	webhookRepo := middleware.InstrumentWebhookRepository(pgStorage.NewWebhookRepository(pool))
-
-	// WaitGroup for webhook goroutines — used for graceful shutdown
-	var webhookWg sync.WaitGroup
-	webhookSvc := service.NewWebhookService(merchantRepo, walletRepo, encSvc, sigSvc, &http.Client{Timeout: 10 * time.Second}, log, &webhookWg, webhookRepo)
 	merchantSvc := service.NewMerchantService(merchantRepo, encSvc)
 	auditRepo := pgStorage.NewAuditRepository(pool)
 	auditSvc := service.NewAuditService(auditRepo, log)
@@ -124,7 +121,6 @@ func main() {
 		AuthSvc:                 authSvc,
 		PaymentSvc:              paymentSvc,
 		ReportingSvc:            reportingSvc,
-		WebhookSvc:              webhookSvc,
 		MerchantRepo:            merchantRepo,
 		EncSvc:                  encSvc,
 		SigSvc:                  sigSvc,
@@ -153,6 +149,14 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	// Deliver webhooks from the outbox in the background
+	dispatchCtx, stopDispatcher := context.WithCancel(context.Background())
+	dispatcherDone := make(chan struct{})
+	go func() {
+		defer close(dispatcherDone)
+		webhookSvc.Run(dispatchCtx)
+	}()
+
 	// Start server in goroutine
 	go func() {
 		log.Info().Str("addr", addr).Msg("HTTP server listening")
@@ -174,17 +178,14 @@ func main() {
 		log.Error().Err(err).Msg("Server forced to shutdown")
 	}
 
-	// Wait for outstanding webhook deliveries to complete (up to 10s)
-	webhookDone := make(chan struct{})
-	go func() {
-		webhookWg.Wait()
-		close(webhookDone)
-	}()
+	// Stop the webhook dispatcher; in-flight deliveries finish, and anything
+	// still pending stays in the outbox for the next start.
+	stopDispatcher()
 	select {
-	case <-webhookDone:
-		log.Info().Msg("All webhook deliveries completed")
-	case <-time.After(10 * time.Second):
-		log.Warn().Msg("Webhook delivery wait timed out, shutting down anyway")
+	case <-dispatcherDone:
+		log.Info().Msg("Webhook dispatcher stopped")
+	case <-time.After(15 * time.Second):
+		log.Warn().Msg("Webhook dispatcher did not stop in time; pending webhooks remain queued")
 	}
 
 	log.Info().Msg("Server exited")

@@ -63,7 +63,7 @@ func newTestApp(t *testing.T) *testApp {
 	// Business services
 	authSvc := service.NewAuthService(merchantRepo, walletRepo, hashSvc, encSvc, tokenSvc, transactor)
 	log := logger.New("debug", false)
-	paymentSvc := service.NewPaymentService(txRepo, walletRepo, idempotencyRepo, idempotencyCache, encSvc, transactor, log)
+	paymentSvc := service.NewPaymentService(txRepo, walletRepo, idempotencyRepo, idempotencyCache, encSvc, transactor, nil, log)
 	reportingSvc := service.NewReportingService(txRepo, walletRepo, encSvc)
 
 	router := httpHandler.SetupRouter(httpHandler.RouterDeps{

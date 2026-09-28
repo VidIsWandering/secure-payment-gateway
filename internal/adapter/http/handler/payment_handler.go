@@ -15,13 +15,13 @@ import (
 // PaymentHandler handles payment-related endpoints.
 type PaymentHandler struct {
 	paymentSvc ports.PaymentService
-	webhookSvc ports.WebhookService
 	txRepo     ports.TransactionRepository
 }
 
-// NewPaymentHandler creates a new PaymentHandler.
-func NewPaymentHandler(paymentSvc ports.PaymentService, webhookSvc ports.WebhookService, txRepo ...ports.TransactionRepository) *PaymentHandler {
-	h := &PaymentHandler{paymentSvc: paymentSvc, webhookSvc: webhookSvc}
+// NewPaymentHandler creates a new PaymentHandler. Webhooks are queued by the
+// payment service inside the DB transaction, not by the handler.
+func NewPaymentHandler(paymentSvc ports.PaymentService, txRepo ...ports.TransactionRepository) *PaymentHandler {
+	h := &PaymentHandler{paymentSvc: paymentSvc}
 	if len(txRepo) > 0 {
 		h.txRepo = txRepo[0]
 	}
@@ -92,11 +92,6 @@ func (h *PaymentHandler) ProcessPayment(c *gin.Context) {
 
 	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
 
-	// Trigger async webhook notification
-	if h.webhookSvc != nil {
-		_ = h.webhookSvc.EnqueueWebhook(c.Request.Context(), result)
-	}
-
 	response.Created(c, toTransactionResponse(result))
 }
 
@@ -129,11 +124,6 @@ func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
 	}
 
 	middleware.RecordTransaction(string(result.TransactionType), string(result.Status))
-
-	// Trigger async webhook notification
-	if h.webhookSvc != nil {
-		_ = h.webhookSvc.EnqueueWebhook(c.Request.Context(), result)
-	}
 
 	response.Created(c, toTransactionResponse(result))
 }

@@ -11,11 +11,11 @@ package mocks
 
 import (
 	context "context"
-	domain "github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
-	ports "github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 	reflect "reflect"
 	time "time"
 
+	domain "github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	ports "github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -560,18 +560,30 @@ func (m *MockWebhookService) EXPECT() *MockWebhookServiceMockRecorder {
 	return m.recorder
 }
 
-// EnqueueWebhook mocks base method.
-func (m *MockWebhookService) EnqueueWebhook(ctx context.Context, transaction *domain.Transaction) error {
+// Enqueue mocks base method.
+func (m *MockWebhookService) Enqueue(ctx context.Context, tx ports.Tx, txn *domain.Transaction, currency string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnqueueWebhook", ctx, transaction)
+	ret := m.ctrl.Call(m, "Enqueue", ctx, tx, txn, currency)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// EnqueueWebhook indicates an expected call of EnqueueWebhook.
-func (mr *MockWebhookServiceMockRecorder) EnqueueWebhook(ctx, transaction any) *gomock.Call {
+// Enqueue indicates an expected call of Enqueue.
+func (mr *MockWebhookServiceMockRecorder) Enqueue(ctx, tx, txn, currency any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueWebhook", reflect.TypeOf((*MockWebhookService)(nil).EnqueueWebhook), ctx, transaction)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Enqueue", reflect.TypeOf((*MockWebhookService)(nil).Enqueue), ctx, tx, txn, currency)
+}
+
+// Run mocks base method.
+func (m *MockWebhookService) Run(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Run", ctx)
+}
+
+// Run indicates an expected call of Run.
+func (mr *MockWebhookServiceMockRecorder) Run(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockWebhookService)(nil).Run), ctx)
 }
 
 // MockMerchantManagementService is a mock of MerchantManagementService interface.

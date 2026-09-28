@@ -171,7 +171,7 @@ func TestProcessPayment_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
-	h := NewPaymentHandler(mockPayment, nil)
+	h := NewPaymentHandler(mockPayment)
 
 	merchantID := uuid.New()
 	txID := uuid.New()
@@ -215,7 +215,7 @@ func TestProcessPayment_MissingMerchantID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
-	h := NewPaymentHandler(mockPayment, nil)
+	h := NewPaymentHandler(mockPayment)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -231,7 +231,7 @@ func TestProcessPayment_InsufficientFunds(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
-	h := NewPaymentHandler(mockPayment, nil)
+	h := NewPaymentHandler(mockPayment)
 
 	merchantID := uuid.New()
 	mockPayment.EXPECT().ProcessPayment(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInsufficientFunds())
@@ -258,7 +258,7 @@ func TestProcessRefund_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
-	h := NewPaymentHandler(mockPayment, nil)
+	h := NewPaymentHandler(mockPayment)
 
 	merchantID := uuid.New()
 	txID := uuid.New()
@@ -298,7 +298,7 @@ func TestGetBalance_Success(t *testing.T) {
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
 	mockReporting := mocks.NewMockReportingService(ctrl)
-	h := NewWalletHandler(mockPayment, mockReporting, nil)
+	h := NewWalletHandler(mockPayment, mockReporting)
 
 	merchantID := uuid.New()
 	mockReporting.EXPECT().GetWalletBalance(gomock.Any(), merchantID).Return(int64(100000), "VND", nil)
@@ -324,7 +324,7 @@ func TestTopup_Success(t *testing.T) {
 
 	mockPayment := mocks.NewMockPaymentService(ctrl)
 	mockReporting := mocks.NewMockReportingService(ctrl)
-	h := NewWalletHandler(mockPayment, mockReporting, nil)
+	h := NewWalletHandler(mockPayment, mockReporting)
 
 	merchantID := uuid.New()
 	txID := uuid.New()

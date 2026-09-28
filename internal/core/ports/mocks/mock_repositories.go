@@ -11,14 +11,77 @@ package mocks
 
 import (
 	context "context"
-	domain "github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
-	ports "github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 	reflect "reflect"
 	time "time"
 
+	domain "github.com/VidIsWandering/secure-payment-gateway/internal/core/domain"
+	ports "github.com/VidIsWandering/secure-payment-gateway/internal/core/ports"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockTx is a mock of Tx interface.
+type MockTx struct {
+	ctrl     *gomock.Controller
+	recorder *MockTxMockRecorder
+	isgomock struct{}
+}
+
+// MockTxMockRecorder is the mock recorder for MockTx.
+type MockTxMockRecorder struct {
+	mock *MockTx
+}
+
+// NewMockTx creates a new mock instance.
+func NewMockTx(ctrl *gomock.Controller) *MockTx {
+	mock := &MockTx{ctrl: ctrl}
+	mock.recorder = &MockTxMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTx) EXPECT() *MockTxMockRecorder {
+	return m.recorder
+}
+
+// MockDBTransactor is a mock of DBTransactor interface.
+type MockDBTransactor struct {
+	ctrl     *gomock.Controller
+	recorder *MockDBTransactorMockRecorder
+	isgomock struct{}
+}
+
+// MockDBTransactorMockRecorder is the mock recorder for MockDBTransactor.
+type MockDBTransactorMockRecorder struct {
+	mock *MockDBTransactor
+}
+
+// NewMockDBTransactor creates a new mock instance.
+func NewMockDBTransactor(ctrl *gomock.Controller) *MockDBTransactor {
+	mock := &MockDBTransactor{ctrl: ctrl}
+	mock.recorder = &MockDBTransactorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDBTransactor) EXPECT() *MockDBTransactorMockRecorder {
+	return m.recorder
+}
+
+// Begin mocks base method.
+func (m *MockDBTransactor) Begin(ctx context.Context) (ports.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Begin", ctx)
+	ret0, _ := ret[0].(ports.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Begin indicates an expected call of Begin.
+func (mr *MockDBTransactorMockRecorder) Begin(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockDBTransactor)(nil).Begin), ctx)
+}
 
 // MockMerchantRepository is a mock of MerchantRepository interface.
 type MockMerchantRepository struct {
@@ -462,18 +525,33 @@ func (m *MockWebhookRepository) EXPECT() *MockWebhookRepositoryMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockWebhookRepository) Create(ctx context.Context, log *domain.WebhookDeliveryLog) error {
+// ClaimDue mocks base method.
+func (m *MockWebhookRepository) ClaimDue(ctx context.Context, limit int, lease time.Duration) ([]domain.WebhookDeliveryLog, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, log)
+	ret := m.ctrl.Call(m, "ClaimDue", ctx, limit, lease)
+	ret0, _ := ret[0].([]domain.WebhookDeliveryLog)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClaimDue indicates an expected call of ClaimDue.
+func (mr *MockWebhookRepositoryMockRecorder) ClaimDue(ctx, limit, lease any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimDue", reflect.TypeOf((*MockWebhookRepository)(nil).ClaimDue), ctx, limit, lease)
+}
+
+// CreateTx mocks base method.
+func (m *MockWebhookRepository) CreateTx(ctx context.Context, tx ports.Tx, log *domain.WebhookDeliveryLog) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTx", ctx, tx, log)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Create indicates an expected call of Create.
-func (mr *MockWebhookRepositoryMockRecorder) Create(ctx, log any) *gomock.Call {
+// CreateTx indicates an expected call of CreateTx.
+func (mr *MockWebhookRepositoryMockRecorder) CreateTx(ctx, tx, log any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWebhookRepository)(nil).Create), ctx, log)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTx", reflect.TypeOf((*MockWebhookRepository)(nil).CreateTx), ctx, tx, log)
 }
 
 // GetByTransactionID mocks base method.
@@ -541,45 +619,6 @@ func (m *MockAuditRepository) Create(ctx context.Context, log *domain.AuditLog) 
 func (mr *MockAuditRepositoryMockRecorder) Create(ctx, log any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockAuditRepository)(nil).Create), ctx, log)
-}
-
-// MockDBTransactor is a mock of DBTransactor interface.
-type MockDBTransactor struct {
-	ctrl     *gomock.Controller
-	recorder *MockDBTransactorMockRecorder
-	isgomock struct{}
-}
-
-// MockDBTransactorMockRecorder is the mock recorder for MockDBTransactor.
-type MockDBTransactorMockRecorder struct {
-	mock *MockDBTransactor
-}
-
-// NewMockDBTransactor creates a new mock instance.
-func NewMockDBTransactor(ctrl *gomock.Controller) *MockDBTransactor {
-	mock := &MockDBTransactor{ctrl: ctrl}
-	mock.recorder = &MockDBTransactorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDBTransactor) EXPECT() *MockDBTransactorMockRecorder {
-	return m.recorder
-}
-
-// Begin mocks base method.
-func (m *MockDBTransactor) Begin(ctx context.Context) (ports.Tx, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Begin", ctx)
-	ret0, _ := ret[0].(ports.Tx)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Begin indicates an expected call of Begin.
-func (mr *MockDBTransactorMockRecorder) Begin(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockDBTransactor)(nil).Begin), ctx)
 }
 
 // MockRateLimitStore is a mock of RateLimitStore interface.

@@ -118,9 +118,13 @@ type ReportingService interface {
 	GetWalletBalance(ctx context.Context, merchantID uuid.UUID) (int64, string, error) // balance, currency, error
 }
 
-// WebhookService defines async webhook delivery.
+// WebhookService delivers merchant webhooks through a transactional outbox.
 type WebhookService interface {
-	EnqueueWebhook(ctx context.Context, transaction *domain.Transaction) error
+	// Enqueue records a webhook for txn inside the caller's DB transaction, so the
+	// notification is persisted if and only if the money movement commits.
+	Enqueue(ctx context.Context, tx Tx, txn *domain.Transaction, currency string) error
+	// Run delivers due webhooks, with retries, until ctx is cancelled.
+	Run(ctx context.Context)
 }
 
 // MerchantProfile is the read-only view of a merchant returned by GetProfile.

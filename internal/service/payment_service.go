@@ -26,6 +26,7 @@ type PaymentServiceImpl struct {
 	idempCache ports.IdempotencyCache
 	encSvc     ports.EncryptionService
 	transactor ports.DBTransactor
+	webhooks   ports.WebhookService // nil = webhooks disabled
 	log        zerolog.Logger
 }
 
@@ -37,6 +38,7 @@ func NewPaymentService(
 	idempCache ports.IdempotencyCache,
 	encSvc ports.EncryptionService,
 	transactor ports.DBTransactor,
+	webhooks ports.WebhookService,
 	log zerolog.Logger,
 ) *PaymentServiceImpl {
 	return &PaymentServiceImpl{
@@ -46,6 +48,7 @@ func NewPaymentService(
 		idempCache: idempCache,
 		encSvc:     encSvc,
 		transactor: transactor,
+		webhooks:   webhooks,
 		log:        log,
 	}
 }
@@ -160,6 +163,13 @@ func (s *PaymentServiceImpl) ProcessPayment(ctx context.Context, req ports.Payme
 	// Persist: create transaction
 	if err := s.txRepo.Create(ctx, dbTx, txn); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("create transaction: %w", err))
+	}
+
+	// Outbox: the webhook row commits (or rolls back) together with the money movement.
+	if s.webhooks != nil {
+		if err := s.webhooks.Enqueue(ctx, dbTx, txn, wallet.Currency); err != nil {
+			return nil, apperror.InternalError(fmt.Errorf("enqueue webhook: %w", err))
+		}
 	}
 
 	// Persist: idempotency log
@@ -319,6 +329,13 @@ func (s *PaymentServiceImpl) ProcessRefund(ctx context.Context, req ports.Refund
 		return nil, apperror.InternalError(fmt.Errorf("create refund tx: %w", err))
 	}
 
+	// Outbox: the webhook row commits (or rolls back) together with the money movement.
+	if s.webhooks != nil {
+		if err := s.webhooks.Enqueue(ctx, dbTx, txn, wallet.Currency); err != nil {
+			return nil, apperror.InternalError(fmt.Errorf("enqueue webhook: %w", err))
+		}
+	}
+
 	// Persist: mark original transaction as REVERSED
 	if err := s.txRepo.UpdateStatus(ctx, dbTx, origTx.ID, domain.TransactionStatusReversed); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("reverse original tx: %w", err))
@@ -427,6 +444,13 @@ func (s *PaymentServiceImpl) ProcessTopup(ctx context.Context, req ports.TopupRe
 	// Persist: create transaction
 	if err := s.txRepo.Create(ctx, dbTx, txn); err != nil {
 		return nil, apperror.InternalError(fmt.Errorf("create transaction: %w", err))
+	}
+
+	// Outbox: the webhook row commits (or rolls back) together with the money movement.
+	if s.webhooks != nil {
+		if err := s.webhooks.Enqueue(ctx, dbTx, txn, wallet.Currency); err != nil {
+			return nil, apperror.InternalError(fmt.Errorf("enqueue webhook: %w", err))
+		}
 	}
 
 	// Commit
