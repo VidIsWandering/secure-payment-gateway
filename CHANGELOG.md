@@ -1,10 +1,17 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
+project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-28
+
 ### Added
+- **Business metrics wired up**: payment/refund/top-up counters (`spg_payment_transactions_total`) and webhook delivery outcomes (`spg_webhook_deliveries_total`) are now recorded, so the corresponding Grafana panels show data.
+- **Project documentation**: `docs/ARCHITECTURE.md`, `SECURITY.md`, request-signing guide, benchmark results and design decisions in the README, screenshots in `docs/images/`.
+- **Repository tooling**: Dependabot (Go modules, GitHub Actions, Docker), YAML issue forms.
 - **Config Validation**: `Validate()` method on `Config` — enforces `JWT_SECRET` ≥ 32 chars, `AES_KEY` = 64 hex chars, valid server mode, port range, and pool size.
 - **CORS Middleware**: Handles `Access-Control-*` headers and preflight `OPTIONS` requests.
 - **Request Timeout Middleware**: Context-based deadline to prevent long-running requests.
@@ -20,6 +27,10 @@ All notable changes to this project will be documented in this file.
 - **Webhook Delivery Persistence**: Webhook attempts are persisted to `webhook_delivery_logs` with retry status tracking.
 
 ### Changed
+- **Go module path** is now `github.com/VidIsWandering/secure-payment-gateway`.
+- **golangci-lint v2**: configuration migrated; CI pins golangci-lint `v2.14.0` and TruffleHog `v3.97.9`.
+- **docker-compose**: PostgreSQL published on host port `5435` (container port `5432`); Grafana on `3005`.
+- **Audit logging** now uses `context.WithoutCancel` instead of `context.Background`, keeping request-scoped values.
 - **Hexagonal Architecture**: Replaced all `pgx.Tx` references in ports with abstract `ports.Tx` interface. Domain layer is now fully decoupled from PostgreSQL driver.
 - **Transactional Registration**: `AuthService.Register()` now creates merchant + wallet atomically in a single DB transaction via `DBTransactor`.
 - **Payment Handler**: `ProcessPayment` and `ProcessRefund` now correctly pass `X-Signature` header value into the service request.
@@ -34,12 +45,15 @@ All notable changes to this project will be documented in this file.
 - **Rate Limit Middleware**: Uses `ports.RateLimitStore` interface instead of concrete Redis store.
 
 ### Fixed
+- **Placeholder JWT secret**: `config/config.yaml` no longer ships a secret that passes validation — `SPG_JWT_SECRET` must be provided.
+- **docker-compose PostgreSQL port mapping** pointed to the wrong container port, breaking the local-run workflow.
+- **Documentation drift**: auth type of `POST /wallets/topup`, timestamp tolerance (±60 s), Grafana port, k6 scenario sizes.
 - **Signature not stored**: Payment and refund transactions were saving empty signature — now correctly captured from `X-Signature` header.
 - **Non-atomic registration**: Merchant and wallet creation could partially succeed — now wrapped in a DB transaction.
 - **Config silent failures**: Missing `JWT_SECRET` or `AES_KEY` no longer defaults silently — fails fast with descriptive error.
 - **In-memory test repos**: Updated to implement `ports.Tx` interface, fixing integration test compilation.
 
-## [0.1.0] - 2026-03-17
+## [0.1.0] - 2026-03-18
 
 ### Added
 - Initial release with core payment gateway functionality.
@@ -55,3 +69,7 @@ All notable changes to this project will be documented in this file.
 - Health check endpoint (PostgreSQL + Redis).
 - Docker + docker-compose deployment.
 - Integration test suite with miniredis.
+
+[Unreleased]: https://github.com/VidIsWandering/secure-payment-gateway/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/VidIsWandering/secure-payment-gateway/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/VidIsWandering/secure-payment-gateway/releases/tag/v0.1.0

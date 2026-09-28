@@ -84,7 +84,7 @@ def main():
     
     resp1 = requests.post(f"http://localhost:8080{endpoint}", data=tampered_str, headers=headers_test1)
     print(f"Status Code: {resp1.status_code}\nResponse: {resp1.text}")
-    print("👉 KẾT QUẢ: Hệ thống từ chối (SEC_001) vì chữ ký hợp lệ nhưng data không khớp chữ ký.")
+    print("👉 KẾT QUẢ: Hệ thống từ chối (SEC_002) vì chữ ký không khớp với dữ liệu đã bị sửa.")
     time.sleep(1)
 
     # ---------------------------------------------------------
@@ -120,9 +120,9 @@ def main():
     # TEST 3: Expired Timestamp (Yêu cầu quá hạn)
     # ---------------------------------------------------------
     print_step("TEST 3: Yêu cầu quá hạn (Expired Timestamp)")
-    print("Mô phỏng: Request được ký hợp lệ nhưng Timestamp nằm ngoài khoảng thời gian cho phép (-/+ 5 phút).")
+    print("Mô phỏng: Request được ký hợp lệ nhưng Timestamp nằm ngoài khoảng thời gian cho phép (±60 giây).")
     
-    old_timestamp = str(int(time.time()) - 400) # Trễ quá 5 phút (300 giây)
+    old_timestamp = str(int(time.time()) - 400) # Trễ hơn giới hạn 60 giây
     new_nonce = str(uuid.uuid4())
     sig_expired = generate_signature("POST", endpoint, secret_key, old_timestamp, new_nonce, payload_str)
     

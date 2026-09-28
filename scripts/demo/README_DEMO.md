@@ -12,7 +12,7 @@ The system exposes several distinct interfaces for operation and monitoring:
     *   Provides interactive documentation for all endpoints, including authentication schemes (JWT for Dashboard, HMAC-SHA256 for Payments).
 *   **Infrastructure Monitoring (Prometheus):** `http://localhost:9090`
     *   Scrapes telemetry data and hardware metrics from the application, database, and cache.
-*   **Analytics Dashboard (Grafana):** `http://localhost:3000`
+*   **Analytics Dashboard (Grafana):** `http://localhost:3005`
     *   Visualizes real-time performance, transaction throughput, request latency, and HTTP error rates.
 
 ---
@@ -55,7 +55,7 @@ python3 scripts/demo/demo_security.py
 
 1.  **Tampering Attack Prevention:** The script generates a valid signature for a 10,000 VND internal transaction payload. However, the outgoing HTTP request body is tampered to request 1,000,000 VND. The system recalculates the signature (H') and rejects the request as H ≠ H'.
 2.  **Replay Attack Prevention:** The system captures a wholly valid request and resends it identically. The application intercepts the request via the Redis nonce-store checks and rejects the duplicate to prevent double-charging.
-3.  **Timestamp Expiration:** A correctly signed request is dispatched using a timestamp older than the allowed tolerance window (e.g., > 5 minutes). The system rejects the request to prevent delayed replay vectors.
+3.  **Timestamp Expiration:** A correctly signed request is dispatched using a timestamp outside the allowed tolerance window (±60 seconds). The system rejects the request to prevent delayed replay vectors.
 4.  **SSRF Webhook Validation:** (Internal) Merchant webhook URLs pointing to private subnets (e.g., `192.168.x.x`, `127.0.0.1` non-development environments) are blocked to prevent Server-Side Request Forgery.
 
 ---
@@ -128,4 +128,4 @@ python3 scripts/demo/demo_concurrency.py
 *   `payment_success_rate` — Ratio of successful business outcomes (201 + 402) vs errors
 *   `payment_latency_ms` — Transaction processing time
 
-**Grafana Telemetry:** While the k6 script executes, view the Grafana Dashboard (`http://localhost:3000`) for real-time visualization of HTTP Latency (ms), TPS (Transactions Per Second), and Error rate behaviors.
+**Grafana Telemetry:** While the k6 script executes, view the Grafana Dashboard (`http://localhost:3005`) for real-time visualization of HTTP Latency (ms), TPS (Transactions Per Second), and Error rate behaviors.
